@@ -12,3 +12,6 @@ fastparquet
 pyarrow
 scikit-learn
 plotly
+h5py
+fiona
+rtree

@@ -6,7 +6,7 @@ from src.preprocess import process_zips_parallel
 from src.aggregate import aggregate_month_from_saved_days
 from src.visualize import convert_to_echarts_format
 
-# ===== 用户可修改的运行参数（直接写在 main 中，双击或运行 main.py 即可） =====
+# ===== 用户可修改的运行参数 =====
 # 年份
 DEFAULT_YEAR = 2013
 # 并发 worker 数（建议根据磁盘 I/O 与 CPU 调整，Windows 上 HDF5 打开仍有全局序列化）

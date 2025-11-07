@@ -11,6 +11,10 @@ CHINA_GADM = os.path.join(os.path.dirname(__file__), 'Data', 'GADM', 'gadm41_CHN
 CHINA_BBOX = getattr(_config, 'CHINA_BBOX', None)
 
 
+"""
+测试用例：快速处理单日 CN-Reanalysis 网格数据文件夹下的所有 .nc 文件
+"""
+
 def main():
     repo_root = os.path.dirname(__file__)
     data_dir = os.path.join(repo_root, 'Data', 'CN-Reanalysis20131231')
@@ -187,7 +191,7 @@ def main():
             filled_count = stats.get('filled_count', 0)
             print(f'空间映射后保留 {after_rows} / {before_rows} 行 (其中用英文替代中文名的填充次数: {filled_count})')
             if stats.get('english_samples'):
-                print('使用英文名作为替代（示例，不含经纬）:')
+                print('使用英文名作为替代:')
                 shown = 0
                 for pe, ce in stats.get('english_samples', []):
                     if shown >= 50:

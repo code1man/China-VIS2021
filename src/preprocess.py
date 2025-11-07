@@ -3,8 +3,10 @@ import sys
 import shutil
 from typing import Optional, List, Tuple, Dict
 import xarray as xr, io
+import zipfile
 import numpy as np
 import pandas as pd
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait, FIRST_COMPLETED
 import threading
 import time
@@ -13,15 +15,14 @@ from .remove_outliers import remove_physical_bounds, remove_iqr_outliers
 from . import config as _config
 from .config import PROCESSED_DIR, DEFER_CLEANUP, VAR_BOUNDS, IQR_K, IQR_GROUPBY
 
-# Fallback default
+# 默认聚合方式
 DEFAULT_AGGREGATE_MEAN = getattr(_config, 'DEFAULT_AGGREGATE_MEAN', True)
 
-
 def _save_df_by_year_granularity(df: pd.DataFrame, day_basename: str, granularity: str) -> str:
-    """Save dataframe into PROCESSED_DIR organized by year/month/day and granularity.
+    """保存数据框到 PROCESSED_DIR，按年/月/日和粒度组织。
 
-    day_basename expected format 'YYYYMMDD' (8 chars). If not present, save under year=unknown.
-    Returns the saved file path.
+    day_basename 预期格式为 'YYYYMMDD'（8 个字符）。如果不存在，则保存到 year=unknown。
+    返回保存的文件路径。
     """
     year = None
     month = None
@@ -66,12 +67,11 @@ def _save_df_by_year_granularity(df: pd.DataFrame, day_basename: str, granularit
         df.to_csv(csv_path, index=False)
         return csv_path
 
-
 def temporal_aggregation(items: List[dict], aggregation: str = 'daily', aggregate_mean: bool = False) -> pd.DataFrame:
-    """Turn a list of in-memory grid dicts into a DataFrame.
+    """将内存中的网格字典列表转换为 DataFrame。
 
-    If aggregate_mean is True, compute per-grid mean across items (fast, no time column).
-    Each item should include 'lat' and 'lon' arrays (2D or 1D) and zero or more variable arrays.
+    如果 aggregate_mean 为 True，则计算跨项目的每个网格均值（快速，无时间列）。
+    每个项目应包含 'lat' 和 'lon' 数组（2D 或 1D）以及零个或多个变量数组。
     """
     if not items:
         return pd.DataFrame()
@@ -120,7 +120,7 @@ def temporal_aggregation(items: List[dict], aggregation: str = 'daily', aggregat
         df = pd.DataFrame(out)
         return df
 
-    # Full flattening path (one row per grid cell per item)
+    # 将内存中的网格字典列表转换为 DataFrame的完整展开路径（每个网格单元每个项目一行）
     rows = []
     for it in items:
         lat = it.get('lat')
@@ -163,16 +163,16 @@ def temporal_aggregation(items: List[dict], aggregation: str = 'daily', aggregat
         pass
     return df
 
-
+# 处理单个 zip 文件
 def process_single_zip(zip_path: str,
                        granularity: str = 'grid',
                        admin_geojson: Optional[str] = None,
                        amap_key: Optional[str] = None,
                        aggregate_mean: bool = DEFAULT_AGGREGATE_MEAN) -> str:
-    """Process one zip file (contains a day's hourly .nc files) and save result.
+    """处理单个 zip 文件（包含一天的每小时 .nc 文件）并保存结果。
 
-    Uses read_nc_from_zip from io_utils to avoid manual extraction when possible.
-    Returns saved file path (parquet or csv).
+    使用 io_utils 中的 read_nc_from_zip 避免手动提取。
+    返回保存的文件路径（parquet 或 csv）。
     """
     basename = os.path.basename(zip_path)
     # try to infer date from filename CN-ReanalysisYYYYMMDD.zip
@@ -186,8 +186,103 @@ def process_single_zip(zip_path: str,
     print(f"[task] start {zip_path}")
     sys.stdout.flush()
 
-    # read the first .nc in zip (io_utils can return ds and tmp_dir)
-    ds, tmp_dir = read_nc_from_zip(zip_path)
+    # Read all .nc files inside the zip and build hourly items list (matches run_single_day_quick behaviour)
+    items = []
+    tmp_dirs = []
+    tmp_dir = None
+    try:
+        # list .nc names in zip
+        try:
+            with zipfile.ZipFile(zip_path, 'r') as zf:
+                nc_names = sorted([n for n in zf.namelist() if n.lower().endswith('.nc')])
+        except Exception:
+            nc_names = []
+
+        if nc_names:
+            for nc_name in nc_names:
+                ds = None
+                try:
+                    # try read bytes from zip and open in-memory
+                    raw = None
+                    try:
+                        raw = read_nc_bytes(zip_path, nc_name)
+                    except Exception:
+                        raw = None
+
+                    if raw is not None:
+                        try:
+                            ds = xr.open_dataset(io.BytesIO(raw), engine='h5netcdf')
+                        except Exception:
+                            try:
+                                ds = xr.open_dataset(io.BytesIO(raw))
+                            except Exception:
+                                ds = None
+                    else:
+                        # fallback: try the io_utils helper which may extract to a tmp dir
+                        try:
+                            ds, t = read_nc_from_zip(zip_path)
+                            if t:
+                                tmp_dirs.append(t)
+                            # when using this fallback the helper may return the first file; accept it
+                        except Exception:
+                            ds = None
+
+                    if ds is None:
+                        continue
+
+                    # build item from ds (same fields as before)
+                    item = {}
+                    for var in ['pm25', 'pm10', 'so2', 'no2', 'co', 'o3', 'temp', 'rh', 'psfc', 'u', 'v']:
+                        if var in ds.variables:
+                            try:
+                                item[var] = ds[var].values
+                            except Exception:
+                                item[var] = None
+                    if 'lat2d' in ds.variables:
+                        item['lat'] = ds['lat2d'].values
+                    elif 'lat' in ds.variables:
+                        item['lat'] = ds['lat'].values
+                    if 'lon2d' in ds.variables:
+                        item['lon'] = ds['lon2d'].values
+                    elif 'lon' in ds.variables:
+                        item['lon'] = ds['lon'].values
+                    # time: use day_basename as before
+                    item['time'] = day_basename
+
+                    items.append(item)
+                finally:
+                    try:
+                        if ds is not None:
+                            ds.close()
+                    except Exception:
+                        pass
+        else:
+            # fallback to previous behaviour: open first .nc via helper
+            try:
+                ds, tmp_dir = read_nc_from_zip(zip_path)
+                # build single-item list so temporal_aggregation still works
+                item = {}
+                for var in ['pm25', 'pm10', 'so2', 'no2', 'co', 'o3', 'temp', 'rh', 'psfc', 'u', 'v']:
+                    if var in ds.variables:
+                        try:
+                            item[var] = ds[var].values
+                        except Exception:
+                            item[var] = None
+                if 'lat2d' in ds.variables:
+                    item['lat'] = ds['lat2d'].values
+                elif 'lat' in ds.variables:
+                    item['lat'] = ds['lat'].values
+                if 'lon2d' in ds.variables:
+                    item['lon'] = ds['lon2d'].values
+                elif 'lon' in ds.variables:
+                    item['lon'] = ds['lon'].values
+                item['time'] = day_basename
+                items.append(item)
+            except Exception:
+                # no usable files found
+                items = []
+    except Exception:
+        items = []
     # optional debug prints controlled by PREPROCESS_DEBUG
     _debug = os.environ.get('PREPROCESS_DEBUG', '') == '1'
     if _debug:
@@ -196,121 +291,74 @@ def process_single_zip(zip_path: str,
             sys.stdout.flush()
         except Exception:
             pass
+
+    # create day_df using temporal_aggregation; use aggregate_mean to avoid explosion
+    day_df = temporal_aggregation(items, aggregation='daily', aggregate_mean=aggregate_mean)
+
+    if _debug:
+        try:
+            print(f"[task-debug] temporal_aggregation done; rows={len(day_df)} cols={list(day_df.columns)[:10]}")
+            sys.stdout.flush()
+        except Exception:
+            pass
+
+    # ensure expected numeric vars exist
+    expected_vars = ['pm25', 'pm10', 'so2', 'no2', 'co', 'o3', 'temp', 'rh', 'psfc', 'u', 'v']
+    for v in expected_vars:
+        if v not in day_df.columns:
+            day_df[v] = pd.NA
+        else:
+            day_df[v] = pd.to_numeric(day_df[v], errors='coerce')
+
+    # apply physical bounds where available
+    if VAR_BOUNDS:
+        try:
+            day_df = remove_physical_bounds(day_df, VAR_BOUNDS, inplace=False)
+        except Exception:
+            pass
+
+    # IQR outlier removal
+    groupby_cols = IQR_GROUPBY if IQR_GROUPBY else ['lat', 'lon']
+    numeric_cols = [c for c in expected_vars if c in day_df.columns]
     try:
-        # build hourly item from ds following run_single_day_quick pattern
-        item = {}
-        for var in ['pm25', 'pm10', 'so2', 'no2', 'co', 'o3', 'temp', 'rh', 'psfc', 'u', 'v']:
-            if var in ds.variables:
+        if numeric_cols:
+            # debug: show sizes before heavy IQR operation
+            if os.environ.get('PREPROCESS_DEBUG', '') == '1':
                 try:
-                    item[var] = ds[var].values
+                    nrows = len(day_df)
+                    try:
+                        # estimate group count
+                        grp_count = day_df.groupby(groupby_cols).ngroups if groupby_cols and all(c in day_df.columns for c in groupby_cols) else None
+                    except Exception:
+                        grp_count = None
+                    print(f"[iqr-debug] running remove_iqr_outliers rows={nrows} cols={len(numeric_cols)} groups={grp_count} groupby={groupby_cols} k={IQR_K}")
+                    sys.stdout.flush()
                 except Exception:
-                    item[var] = None
-        if 'lat2d' in ds.variables:
-            item['lat'] = ds['lat2d'].values
-        elif 'lat' in ds.variables:
-            item['lat'] = ds['lat'].values
-        if 'lon2d' in ds.variables:
-            item['lon'] = ds['lon2d'].values
-        elif 'lon' in ds.variables:
-            item['lon'] = ds['lon'].values
-        # time: try to infer from filename, keep simple date string
-        item['time'] = day_basename
+                    pass
 
-        if _debug:
-            try:
-                print(f"[task-debug] built item arrays; vars_present={[k for k in item.keys() if k not in ('lat','lon','time','geometry')]}")
-                sys.stdout.flush()
-            except Exception:
-                pass
-
-        # create day_df using temporal_aggregation; use aggregate_mean to avoid explosion
-        day_df = temporal_aggregation([item], aggregation='daily', aggregate_mean=aggregate_mean)
-
-        if _debug:
-            try:
-                print(f"[task-debug] temporal_aggregation done; rows={len(day_df)} cols={list(day_df.columns)[:10]}")
-                sys.stdout.flush()
-            except Exception:
-                pass
-
-        # 地理上合理性过滤：移除缺失或明显超出经纬度范围的点（以减少后续分组/统计的异常开销）
-        try:
-            if 'lat' in day_df.columns and 'lon' in day_df.columns:
-                # drop rows with missing coordinates
-                before_geo = len(day_df)
-                day_df = day_df.dropna(subset=['lat', 'lon'])
-                # valid ranges
-                lat_mask = (day_df['lat'] >= -90.0) & (day_df['lat'] <= 90.0)
-                lon_mask = (day_df['lon'] >= -180.0) & (day_df['lon'] <= 180.0)
-                day_df = day_df[lat_mask & lon_mask]
-                if _debug:
-                    try:
-                        print(f"[geo-debug] filtered geographic rows: before={before_geo} after={len(day_df)}")
-                        sys.stdout.flush()
-                    except Exception:
-                        pass
-        except Exception:
-            pass
-
-        # ensure expected numeric vars exist
-        expected_vars = ['pm25', 'pm10', 'so2', 'no2', 'co', 'o3', 'temp', 'rh', 'psfc', 'u', 'v']
-        for v in expected_vars:
-            if v not in day_df.columns:
-                day_df[v] = pd.NA
-            else:
-                day_df[v] = pd.to_numeric(day_df[v], errors='coerce')
-
-        # apply physical bounds where available
-        if VAR_BOUNDS:
-            try:
-                day_df = remove_physical_bounds(day_df, VAR_BOUNDS, inplace=False)
-            except Exception:
-                pass
-
-        # IQR outlier removal
-        groupby_cols = IQR_GROUPBY if IQR_GROUPBY else ['lat', 'lon']
-        numeric_cols = [c for c in expected_vars if c in day_df.columns]
-        try:
-            if numeric_cols:
-                # debug: show sizes before heavy IQR operation
+            # allow skipping IQR via env var for faster runs
+            if os.environ.get('PREPROCESS_SKIP_IQR', '') == '1':
                 if os.environ.get('PREPROCESS_DEBUG', '') == '1':
-                    try:
-                        nrows = len(day_df)
+                    print("[iqr-debug] PREPROCESS_SKIP_IQR=1 set; using global percentile clip instead of group IQR")
+                    sys.stdout.flush()
+                # Perform global percentile clipping per column to emulate run_single_day_quick behaviour
+                cleaned_df = day_df.copy()
+                try:
+                    clip_low = 0.005
+                    clip_high = 0.995
+                    for col in numeric_cols:
                         try:
-                            # estimate group count
-                            grp_count = day_df.groupby(groupby_cols).ngroups if groupby_cols and all(c in day_df.columns for c in groupby_cols) else None
+                            ser = pd.to_numeric(cleaned_df[col], errors='coerce')
+                            low = ser.quantile(clip_low)
+                            high = ser.quantile(clip_high)
+                            cleaned_df[col] = ser.clip(lower=low, upper=high)
                         except Exception:
-                            grp_count = None
-                        print(f"[iqr-debug] running remove_iqr_outliers rows={nrows} cols={len(numeric_cols)} groups={grp_count} groupby={groupby_cols} k={IQR_K}")
-                        sys.stdout.flush()
-                    except Exception:
-                        pass
-
-                # allow skipping IQR via env var for faster runs
-                if os.environ.get('PREPROCESS_SKIP_IQR', '') == '1':
-                    if os.environ.get('PREPROCESS_DEBUG', '') == '1':
-                        print("[iqr-debug] PREPROCESS_SKIP_IQR=1 set; using global percentile clip instead of group IQR")
-                        sys.stdout.flush()
-                    # Perform global percentile clipping per column to emulate run_single_day_quick behaviour
-                    cleaned_df = day_df.copy()
-                    try:
-                        clip_low = 0.005
-                        clip_high = 0.995
-                        for col in numeric_cols:
-                            try:
-                                ser = pd.to_numeric(cleaned_df[col], errors='coerce')
-                                low = ser.quantile(clip_low)
-                                high = ser.quantile(clip_high)
-                                cleaned_df[col] = ser.clip(lower=low, upper=high)
-                            except Exception:
-                                pass
-                    except Exception:
-                        pass
-                else:
-                    cleaned_df, _ = remove_iqr_outliers(day_df, value_cols=numeric_cols, groupby=groupby_cols, k=IQR_K, return_mask=True)
+                            pass
+                except Exception:
+                    pass
+            else:
+                cleaned_df, _ = remove_iqr_outliers(day_df, value_cols=numeric_cols, groupby=groupby_cols, k=IQR_K, return_mask=True)
                 day_df = cleaned_df
-        except Exception:
-            pass
 
         if _debug:
             try:
@@ -319,9 +367,8 @@ def process_single_zip(zip_path: str,
             except Exception:
                 pass
 
-        # filter to China and aggregate to admin if requested
-        # Optimization: map UNIQUE rounded coordinates (lat/lon) once, then merge back.
-        # This mirrors run_single_day_quick behavior and avoids repeated heavy spatial joins
+        # 过滤到中国并按需聚合到行政区
+        # 优化：一次映射唯一的四舍五入坐标（lat/lon），然后合并回来。
         if granularity in ('city', 'province') and admin_geojson and os.path.exists(admin_geojson):
             from .geo_utils import map_points_to_admin, canonicalize_admin_mapping
 
@@ -351,6 +398,18 @@ def process_single_zip(zip_path: str,
                     if candidates:
                         mapped_coords = mapped_coords.rename(columns={candidates[0]: 'admin_name'})
 
+                # Try to populate 'province' and 'city' from common GADM property names
+                # if they are missing. This is a lightweight, local-only massaging to
+                # avoid dropping rows when geojson uses different property names.
+                if 'province' not in mapped_coords.columns:
+                    prov_candidates = [c for c in mapped_coords.columns if any(tok in c.upper() for tok in ['NAME_1','NL_NAME_1','PROVINCE','ADM1','PRV'])]
+                    if prov_candidates:
+                        mapped_coords = mapped_coords.rename(columns={prov_candidates[0]: 'province'})
+                if 'city' not in mapped_coords.columns:
+                    city_candidates = [c for c in mapped_coords.columns if any(tok in c.upper() for tok in ['NAME_2','NL_NAME_2','CITY','ADM2','CNTY','MUN'])]
+                    if city_candidates:
+                        mapped_coords = mapped_coords.rename(columns={city_candidates[0]: 'city'})
+
                 # keep only necessary columns lat/lon/admin
                 keep_cols = ['lat', 'lon']
                 for c in ('admin_name', 'province', 'city'):
@@ -368,19 +427,53 @@ def process_single_zip(zip_path: str,
                 # canonicalize admin mapping (fill english if needed)
                 before_rows = len(merged)
                 merged, stats = canonicalize_admin_mapping(merged, fill_english_if_missing=True, sample_limit=50)
-
-                # Mirror run_single_day_quick: report mapping stats and english-samples used to fill missing Chinese names
-                after_rows = stats.get('after_rows', len(merged))
-                filled_count = stats.get('filled_count', 0)
+                # Normalize placeholder strings ("NA", "N/A", "<NA>", empty) to real missing values
                 try:
-                    print(f'空间映射后保留 {after_rows} / {before_rows} 行 (其中用英文替代中文名的填充次数: {filled_count})')
+                    placeholders = set(['', 'NA', 'N/A', 'NAN', '<NA>'])
+                    for col in ('province', 'city', 'admin_name'):
+                        if col in merged.columns:
+                            # strip whitespace and convert known placeholders (case-insensitive) to pd.NA
+                            def _norm(v):
+                                try:
+                                    if v is None or (isinstance(v, float) and pd.isna(v)):
+                                        return pd.NA
+                                    if isinstance(v, str):
+                                        s = v.strip()
+                                        if s == '':
+                                            return pd.NA
+                                        if s.upper() in placeholders:
+                                            return pd.NA
+                                        return s
+                                    return v
+                                except Exception:
+                                    return pd.NA
+                            merged[col] = merged[col].apply(_norm)
                 except Exception:
                     pass
+
+                # debug: show raw english_samples content/count to help diagnose why
+                # the printing branch may be effectively skipped after filtering.
+                if os.environ.get('PREPROCESS_DEBUG', '') == '1':
+                    try:
+                        raw_es = stats.get('english_samples')
+                        print(f"[debug] raw english_samples count={len(raw_es) if raw_es is not None else 0}; raw={raw_es}")
+                    except Exception:
+                        pass
+
                 if stats.get('english_samples'):
                     try:
-                        print('使用英文名作为替代（示例，不含经纬）:')
+                        print('使用英文名作为替代:')
                         shown = 0
+                        # filter out empty or placeholder values
+                        samples = []
                         for pe, ce in stats.get('english_samples', []):
+                            s_pe = '' if pe is None else str(pe).strip()
+                            s_ce = '' if ce is None else str(ce).strip()
+                            if s_ce and s_ce.upper() not in ('NA', 'NAN', '<NA>'):
+                                samples.append((s_pe, s_ce))
+                            elif s_pe and s_pe.upper() not in ('NA', 'NAN', '<NA>'):
+                                samples.append((s_pe, s_ce))
+                        for pe, ce in samples:
                             if shown >= 50:
                                 break
                             if pe and ce:
@@ -394,38 +487,87 @@ def process_single_zip(zip_path: str,
                         pass
 
                 # If canonicalize missed some names, try explicit english-column fallback for rows
-                # where admin_name/province/city are still missing. If still missing after fallback, drop the row.
+                # where admin_name/province/city are still missing. Fill from any available
+                # english-like columns per-row; do NOT drop rows. Finally replace remaining
+                # NaNs with 'UNKNOWN' to ensure no NaNs in outputs.
                 try:
-                    # candidate english-like columns
-                    cand_tokens = ['NAME_2', 'NAME_1', 'VARNAME', 'EN', 'ENG', 'NL_NAME', 'CITY', 'PROVINCE']
-                    cand_cols = [c for c in merged.columns if any(tok in c.upper() for tok in cand_tokens)]
-                    fill_from_english = 0
-                    # rows where all admin identifiers are missing
-                    missing_idx = merged[merged[['admin_name', 'province', 'city']].isna().all(axis=1)].index.tolist()
-                    for idx in missing_idx:
-                        for c in cand_cols:
-                            try:
-                                v = merged.at[idx, c]
-                            except Exception:
-                                v = None
-                            if pd.notna(v) and str(v).strip():
-                                cu = c.upper()
-                                if 'NAME_2' in cu or 'VARNAME' in cu or 'CITY' in cu:
-                                    merged.at[idx, 'city'] = v
-                                elif 'NAME_1' in cu or 'PROVINCE' in cu:
-                                    merged.at[idx, 'province'] = v
-                                else:
-                                    merged.at[idx, 'admin_name'] = v
-                                fill_from_english += 1
-                                break
-                    # after attempting fill, drop rows that still lack any admin identifier
-                    before_drop = len(merged)
-                    mask_keep = (~merged['admin_name'].isna()) | (~merged['province'].isna()) | (~merged['city'].isna())
-                    merged = merged[mask_keep].copy()
-                    dropped = before_drop - len(merged)
+                    # Build candidate columns (broad set) but we'll prefer Chinese text when available.
+                    cand_cols = [c for c in merged.columns if re.search(r'NAME|EN\b|ENG|VARNAME|NL_NAME|CITY|PROVINCE|ADM', c, re.I)]
+
+                    def _choose_preferred(series_df, candidates):
+                        """
+                        Choose preferred string per-row from candidates:
+                        - First prefer values containing CJK/Chinese characters.
+                        - If none contain Chinese, pick the first non-empty candidate (assumed English).
+                        - If still none, return NaN (will be dropped later if desired).
+                        Returns a pandas Series aligned with series_df.index.
+                        """
+                        idx = series_df.index
+                        out = pd.Series([pd.NA] * len(idx), index=idx, dtype=object)
+                        # helper to normalize a column to string but keep NA as NA
+                        def _col_series(name):
+                            if name not in series_df.columns:
+                                return pd.Series([pd.NA] * len(idx), index=idx, dtype=object)
+                            s = series_df[name].astype(object).where(series_df[name].notna(), pd.NA)
+                            return s
+
+                        # first pass: prefer Chinese characters
+                        chinese_re = re.compile(r'[\u4e00-\u9fff]')
+                        for c in candidates:
+                            s = _col_series(c)
+                            mask = s.notna() & s.astype(str).str.strip().ne('') & s.astype(str).str.contains(chinese_re)
+                            if mask.any():
+                                # fill only where out is not set
+                                to_fill = mask & out.isna()
+                                out[to_fill] = s[to_fill]
+                        # second pass: first non-empty (english/fallback)
+                        for c in candidates:
+                            s = _col_series(c)
+                            mask = s.notna() & s.astype(str).str.strip().ne('')
+                            if mask.any():
+                                to_fill = mask & out.isna()
+                                out[to_fill] = s[to_fill]
+                        # leave remaining as pd.NA
+                        out = out.replace({pd.NA: pd.NA})
+                        return out
+
+                    # Candidate ordering: prefer NAME_1/NAME_2 style then generic city/province columns
+                    prov_cands = [c for c in cand_cols if re.search(r'NAME[_\.]?1|PROVINCE|ADM1|VARNAME[_\.]?1|NL_NAME[_\.]?1', c, re.I)] + [c for c in cand_cols if c not in []]
+                    city_cands = [c for c in cand_cols if re.search(r'NAME[_\.]?2|CITY|ADM2|VARNAME[_\.]?2|NL_NAME[_\.]?2', c, re.I)] + [c for c in cand_cols if c not in []]
+
+                    # Ensure we don't duplicate columns in candidate lists
+                    prov_cands = [c for i, c in enumerate(prov_cands) if c and prov_cands.index(c) == i]
+                    city_cands = [c for i, c in enumerate(city_cands) if c and city_cands.index(c) == i]
+
+                    # If canonical columns already present and non-empty, keep them
+                    if 'province' in merged.columns and merged['province'].notna().any():
+                        prov_series = merged['province'].astype(object).where(merged['province'].notna(), pd.NA)
+                    else:
+                        prov_series = _choose_preferred(merged, prov_cands)
+                    if 'city' in merged.columns and merged['city'].notna().any():
+                        city_series = merged['city'].astype(object).where(merged['city'].notna(), pd.NA)
+                    else:
+                        city_series = _choose_preferred(merged, city_cands)
+
+                    # admin_name: prefer existing admin_name, else compose from city/province if available
+                    if 'admin_name' in merged.columns and merged['admin_name'].notna().any():
+                        admin_series = merged['admin_name'].astype(object).where(merged['admin_name'].notna(), pd.NA)
+                    else:
+                        # prefer city, then province
+                        admin_series = city_series.where(city_series.notna(), prov_series)
+
+                    # assign back (do not overwrite existing non-null values)
+                    merged['province'] = merged.get('province').where(merged.get('province').notna(), prov_series)
+                    merged['city'] = merged.get('city').where(merged.get('city').notna(), city_series)
+                    merged['admin_name'] = merged.get('admin_name').where(merged.get('admin_name').notna(), admin_series)
+
+                    # Note: per your request, we leave rows with no province AND no city as NaN so they can be dropped
                     if _debug:
                         try:
-                            print(f"[task-debug] english-fallback filled: {fill_from_english}; dropped rows with no admin info: {dropped}")
+                            prov_count = int(merged['province'].notna().sum()) if 'province' in merged.columns else 0
+                            city_count = int(merged['city'].notna().sum()) if 'city' in merged.columns else 0
+                            admin_count = int(merged['admin_name'].notna().sum()) if 'admin_name' in merged.columns else 0
+                            print(f"[task-debug] after-fallback counts: province={prov_count} city={city_count} admin_name={admin_count}")
                             sys.stdout.flush()
                         except Exception:
                             pass
@@ -489,16 +631,26 @@ def process_single_zip(zip_path: str,
         return saved
 
     finally:
-        try:
-            ds.close()
-        except Exception:
-            pass
+        # close any lingering dataset (most were closed inline) and cleanup tmp dirs
         try:
             if tmp_dir:
                 if DEFER_CLEANUP:
                     record_tmp_dir(tmp_dir)
                 else:
                     shutil.rmtree(tmp_dir)
+        except Exception:
+            pass
+        try:
+            for t in tmp_dirs:
+                if not t:
+                    continue
+                if DEFER_CLEANUP:
+                    record_tmp_dir(t)
+                else:
+                    try:
+                        shutil.rmtree(t)
+                    except Exception:
+                        pass
         except Exception:
             pass
 
@@ -519,10 +671,6 @@ def process_zips_parallel(base_path: str,
                           admin_geojson: Optional[str] = None,
                           workers: int = 4,
                           aggregate_mean: bool = DEFAULT_AGGREGATE_MEAN) -> Tuple[List[str], List[Dict]]:
-    """
-    使用 ThreadPoolExecutor 以避免 netCDF / HDF5 在多进程下的锁竞争问题（Windows 下常见）。
-    保持原有接口与返回值： (saved_list, failures)
-    """
     zip_paths = []
     # expect files named CN-Reanalysis{YYYY}{MM}{DD}.zip
     for month in range(1, 13):

@@ -198,11 +198,52 @@ def read_nc_from_zip(zip_file_path, nc_file_name=None):
                 if _debug:
                     print(f"[io_utils] candidate member '{nc_file_name}' size={file_size} try_in_memory={try_in_memory}")
 
-                # NOTE: in-memory BytesIO path intentionally skipped to avoid backend/engine
-                # incompatibilities and HDF5 handle conflicts on Windows. We always extract
-                # to disk and let xarray open via file path for reliability.
-                if _debug:
-                    print(f"[io_utils] skipping in-memory BytesIO path for {nc_file_name}")
+                # Try an in-memory open path when possible to avoid creating temp files.
+                # We prefer a memory-backed netCDF4.Dataset if the netCDF4 C library is
+                # available and the member size is within MAX_IN_MEMORY_BYTES. This avoids
+                # extracting to disk. If anything fails we fall back to extraction below.
+                attempted_inmemory = False
+                if try_in_memory and (not _force_disk):
+                    try:
+                        import netCDF4
+                        # read bytes from zip member
+                        nc_bytes = file_in_zip.read()
+                        if nc_bytes is not None and (MAX_IN_MEMORY_BYTES is None or len(nc_bytes) <= MAX_IN_MEMORY_BYTES):
+                            if _debug:
+                                print(f"[io_utils] attempting in-memory open for {nc_file_name} (bytes={len(nc_bytes)})")
+                            try:
+                                # netCDF4 supports opening from bytes via the 'memory' kwarg
+                                nc4 = netCDF4.Dataset('inmemory', mode='r', memory=nc_bytes)
+                                try:
+                                    # wrap netCDF4 Dataset into xarray via the NetCDF4DataStore
+                                    try:
+                                        from xarray.backends import NetCDF4DataStore
+                                        xr_ds = xr.open_dataset(NetCDF4DataStore(nc4))
+                                    except Exception:
+                                        # fallback: xarray may accept a netCDF4.Dataset-like object directly
+                                        xr_ds = xr.open_dataset(nc4)
+                                    if _debug:
+                                        print(f"[io_utils] in-memory open succeeded for {nc_file_name}")
+                                    attempted_inmemory = True
+                                    return xr_ds, None
+                                except Exception as e_in:
+                                    # ensure underlying netCDF4 object is closed if we failed
+                                    try:
+                                        nc4.close()
+                                    except Exception:
+                                        pass
+                                    if _debug:
+                                        print(f"[io_utils] in-memory xarray wrapping failed: {e_in}")
+                            except Exception as e_mem:
+                                if _debug:
+                                    print(f"[io_utils] netCDF4 in-memory open failed: {e_mem}")
+                    except Exception:
+                        # netCDF4 not available or other error; fall through to disk extraction
+                        if _debug:
+                            print(f"[io_utils] in-memory path not available for {nc_file_name}; falling back to disk extraction")
+                else:
+                    if _debug:
+                        print(f"[io_utils] in-memory open not attempted (try_in_memory={try_in_memory}, force_disk={_force_disk})")
         except Exception:
             pass
 
@@ -298,6 +339,59 @@ def read_nc_from_zip(zip_file_path, nc_file_name=None):
                 ds = _try_open_with_engines(extracted_path, engines=engines)
                 if _debug:
                     print(f"[io_utils] opened extracted file successfully: {extracted_path}")
+
+                # Try to eagerly load into memory and remove temp files immediately
+                try:
+                    file_size_known = None
+                    try:
+                        file_size_known = info.file_size if 'info' in locals() and getattr(info, 'file_size', None) else None
+                    except Exception:
+                        file_size_known = None
+                    try:
+                        if file_size_known is None and os.path.exists(extracted_path):
+                            file_size_known = os.path.getsize(extracted_path)
+                    except Exception:
+                        file_size_known = None
+
+                    should_eager_load = False
+                    try:
+                        if MAX_IN_MEMORY_BYTES is None:
+                            should_eager_load = True
+                        elif file_size_known is not None and file_size_known <= MAX_IN_MEMORY_BYTES:
+                            should_eager_load = True
+                    except Exception:
+                        should_eager_load = False
+
+                    if should_eager_load:
+                        if _debug:
+                            print(f"[io_utils] eager-loading dataset into memory (size={file_size_known}) and removing tmp dir {tmp_dir}")
+                        try:
+                            # load all data into memory-backed arrays
+                            ds_loaded = ds.load()
+                            try:
+                                ds.close()
+                            except Exception:
+                                pass
+                            # attempt to remove tmp_dir immediately
+                            try:
+                                if tmp_dir:
+                                    shutil.rmtree(tmp_dir)
+                            except Exception:
+                                # record for later cleanup if removal fails
+                                try:
+                                    record_tmp_dir(tmp_dir)
+                                except Exception:
+                                    pass
+                            return ds_loaded, None
+                        except Exception as e_load:
+                            if _debug:
+                                print(f"[io_utils] eager load failed: {e_load}; returning on-disk dataset and tmp_dir")
+                            # fallthrough to return original ds and tmp_dir
+
+                except Exception:
+                    # any error deciding eager-load -> keep original behavior
+                    pass
+
                 return ds, tmp_dir
             except Exception as final_exc:
                 # If open failed with a missing-file error at the C level (common when
@@ -359,6 +453,33 @@ def read_nc_from_zip(zip_file_path, nc_file_name=None):
                             ds = _try_open_with_engines(fallback_path, engines=engines)
                             if _debug:
                                 print(f"[io_utils] opened extracted file successfully from fallback: {fallback_path}")
+                            # attempt eager-load for fallback copy as well
+                            try:
+                                file_size_known_fb = None
+                                try:
+                                    file_size_known_fb = os.path.getsize(fallback_path)
+                                except Exception:
+                                    file_size_known_fb = None
+                                if file_size_known_fb is not None and (MAX_IN_MEMORY_BYTES is None or file_size_known_fb <= MAX_IN_MEMORY_BYTES):
+                                    try:
+                                        ds_loaded_fb = ds.load()
+                                        try:
+                                            ds.close()
+                                        except Exception:
+                                            pass
+                                        try:
+                                            shutil.rmtree(ascii_tmp)
+                                        except Exception:
+                                            try:
+                                                record_tmp_dir(ascii_tmp)
+                                            except Exception:
+                                                pass
+                                        return ds_loaded_fb, None
+                                    except Exception:
+                                        # fall back to returning on-disk ds
+                                        pass
+                            except Exception:
+                                pass
                             return ds, ascii_tmp
                         except Exception as re:
                             if _debug:
