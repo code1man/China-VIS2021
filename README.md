@@ -66,6 +66,50 @@ pip install -r requirements.txt
 - `PREPROCESS_SKIP_IQR=1`：跳过按组 IQR 运算，改用全局分位数裁剪（更快，行为等价于 `run_single_day_quick.py` 的快速模式）。
 - `MAX_IN_MEMORY_BYTES`：在 `src/config.py` 中配置（默认为 300MB），决定何时尝试把 `.nc` 完整读入内存并立即删除临时文件。
 
+### 纯内存模式（避免创建临时文件/解压）
+
+如果你的磁盘空间极其紧张，希望**尽可能不在磁盘上创建临时文件或目录**，可以启用项目的“纯内存”模式。该模式的设计原则是：优先在内存中打开 ZIP 内的 `.nc` 成员，只有在明确允许回退到磁盘的情况下才会解压。
+
+主要控制项（环境变量 / API）：
+- `PREPROCESS_PURE_MEMORY=1`：严格启用纯内存模式（推荐通过此环境变量在进程启动前设置）。当启用后，代码会禁止创建临时目录或写入磁盘，内存打开失败将抛出错误并停止处理。
+- `PREPROCESS_ALLOW_DISK_FALLBACK=1`：允许在内存打开全部失败时回退到磁盘解压（默认**不允许**）。仅在你明确有磁盘空间并接受回退行为时设置。
+- `PREPROCESS_FORCE_DISK=1|0`：与历史行为兼容，设置为 `1` 强制解压到磁盘（不推荐当你磁盘空间紧张时使用）；设置为 `0` 则允许内存优先策略。
+- 运行时 API：`from src.io_utils import set_pure_memory; set_pure_memory(True)` 可在进程中切换纯内存模式（仅影响当前进程）。
+
+实现细节与注意事项：
+- 实现优先使用不依赖 HDF5/C 库的 xarray 后端（优先尝试 `h5netcdf` 和 `scipy`）从内存字节流打开 `.nc`。如果这些后端不可用，代码会作为最后手段尝试 `netCDF4` 的 memory 模式以提高兼容性。
+- 纯内存模式下若后端不满足（未安装支持的 engine 或文件过大超出 `MAX_IN_MEMORY_BYTES`），将直接抛出错误，而不会隐式写盘或创建临时目录。
+- 若你希望最大概率成功且可以接受回退解压，请设置 `PREPROCESS_ALLOW_DISK_FALLBACK=1`；否则请确保系统安装 `h5netcdf` 或 `scipy` 对应的 xarray 后端。
+- 调试建议：将 `PREPROCESS_DEBUG=1` 打开以查看尝试的后端、字节大小以及失败原因。
+
+示例（Windows cmd.EXE）：
+
+1) 严格纯内存（禁止写盘回退，推荐在磁盘空间不足时使用）：
+
+```cmd
+set PREPROCESS_PURE_MEMORY=1
+set PREPROCESS_FORCE_DISK=0
+set PREPROCESS_DEBUG=1
+python main.py
+```
+
+2) 允许失败时回退到磁盘（更兼容，但可能会写入临时文件）：
+
+```cmd
+set PREPROCESS_ALLOW_DISK_FALLBACK=1
+set PREPROCESS_DEBUG=1
+python main.py
+```
+
+3) 恢复默认行为或强制磁盘（与旧版本一致）：
+
+```cmd
+set PREPROCESS_FORCE_DISK=1
+python main.py
+```
+
+在实际运行时，如果你看到仍有临时目录产生，请分享 `PREPROCESS_DEBUG=1` 的输出（或 `tmp_dirs_to_cleanup.json` 内容），我会帮助定位具体是哪段路径仍在写盘并修复它。
+
 ## 临时文件与清理策略
 
 - 默认在 Windows 上为稳妥起见，代码倾向于使用磁盘解压（可通过 `PREPROCESS_FORCE_DISK=0` 改变）。
@@ -82,8 +126,3 @@ cleanup_tmp_dirs()
 1. "提交很多 job 后进程退出"：确认 `PREPROCESS_DEBUG=1`，观察线程池的 `submitted ... jobs` 后是否有异常打印。通常通过查看每个 task 的 start/success/failed 日志可定位出错的 zip 文件。
 2. "看到 NA/空行政名": 开启 `PREPROCESS_DEBUG=1`，检查 `mapped_coords` 与 `merged` 的 sample 输出，确认 GeoJSON 的列名（NAME_1/NAME_2 或者 NL_NAME_*）是否与代码匹配，必要时在 `src/geo_utils.py` 中调整候选列顺序。
 3. "内存/后端错误": 在 Windows 上优先用 conda 安装 `netcdf4`/`h5py` 并设置 `PREPROCESS_FORCE_DISK=1` 回退到磁盘解压；或减小 `MAX_IN_MEMORY_BYTES`。
-
-## 贡献与扩展点
-
-- 如果需要更激进的临时删除策略（例如即使是大文件也尝试流式读取后删除临时），请在 issue 中说明你能接受的内存上限与可能的风险（误删/OOM）。
-- 如果需要对 `canonicalize_admin_mapping` 的回填规则做更严格匹配（如优先使用本地 GADM 的 `NL_NAME` 字段），可以提交带有目标 GeoJSON 的样本以便我调整候选列优先级。
