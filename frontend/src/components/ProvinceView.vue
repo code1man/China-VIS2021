@@ -5,8 +5,9 @@
       <div class="pv-sub">污染物: {{ pollutant || '（未选择）' }} · 粒度: {{ granularity }}</div>
       <div class="pv-controls">
         <label>右侧视图: </label>
-        <button class="btn-small" :class="{active: cityChartType === 'pie'}" @click.prevent="cityChartType = 'pie'">Pie</button>
-        <button class="btn-small" :class="{active: cityChartType === 'bar'}" @click.prevent="cityChartType = 'bar'">Bar</button>
+        <button class="btn-small" :class="{active: rightChartType === 'trend'}" @click.prevent="rightChartType = 'trend'">Trend</button>
+        <button class="btn-small" :class="{active: rightChartType === 'pie'}" @click.prevent="rightChartType = 'pie'">Pie</button>
+        <button class="btn-small" :class="{active: rightChartType === 'bar'}" @click.prevent="rightChartType = 'bar'">Bar</button>
       </div>
     </div>
     <div class="pv-grid">
@@ -15,7 +16,11 @@
         <div id="radarChart" class="chart-canvas"></div>
       </section>
       <section class="pv-chart pv-chart-right">
-        <div id="cityChart" class="chart-canvas"></div>
+        <!-- top: trend (for month/year) or distribution (for day) -->
+        <div id="trendChart" class="chart-canvas" v-show="rightChartType === 'trend' && granularity !== 'day'"></div>
+        <div id="distChart" class="chart-canvas" v-show="rightChartType === 'trend' && granularity === 'day'"></div>
+        <!-- city comparison (visible when not showing trend) -->
+        <div id="cityChart" class="chart-canvas" v-show="rightChartType !== 'trend'" style="margin-top:12px;"></div>
       </section>
     </div>
   </div>
@@ -36,7 +41,7 @@ const props = defineProps({
 // month-directory loaded rows (if we fetch CSVs from resources/processed/city/YYYY/MM/)
 const monthlyLoadedRows = ref([]);
 const loadingMonthly = ref(false);
-const cityChartType = ref('bar'); // 'bar' | 'pie' | 'radar'
+const rightChartType = ref('trend'); // 'trend' | 'bar' | 'pie'
 
 let trendChart = null;
 let cityChart = null;
@@ -179,6 +184,62 @@ const fetchAndParseCsv = async (url) => {
   return parseCsv(t);
 };
 
+// try aggregated monthly CSV first (resources/aggregated/{year}/{yyyymm}.csv)
+const tryLoadAggregatedMonth = async (yearMonth) => {
+  if (!yearMonth) return [];
+  let Y = yearMonth.slice(0,4);
+  let M = '';
+  if (yearMonth.includes('-')) M = yearMonth.split('-')[1]; else M = yearMonth.slice(4,6);
+  if (!Y || !M) return [];
+  M = String(M).padStart(2,'0');
+  const yyyymm = `${Y}${M}`;
+  const candidates = [
+    `/resources/aggregated/${Y}/${yyyymm}.csv`,
+    `/resources/aggregated/${Y}/${yyyymm}.CSV`,
+    `/resources/aggregated/${Y}/${yyyymm}`
+  ];
+  for (const c of candidates) {
+    try {
+      const rows = await fetchAndParseCsv(c);
+      if (rows && rows.length) return rows;
+    } catch (e) {}
+  }
+  return [];
+};
+
+// unified month loader: try aggregated files first, then fall back to folder enumeration
+async function loadMonthData(yearMonth) {
+  try {
+    const agg = await tryLoadAggregatedMonth(yearMonth);
+    if (agg && agg.length) {
+      monthlyLoadedRows.value = agg;
+      return agg;
+    }
+    // fallback to per-day directory under resources/processed/city/Y/M/
+    const bydir = await loadMonthlyDir(yearMonth);
+    monthlyLoadedRows.value = bydir || [];
+    return monthlyLoadedRows.value;
+  } catch (e) { monthlyLoadedRows.value = []; return []; }
+}
+
+// try to load a whole year by aggregating available monthly files/directories
+async function loadYearData(year) {
+  if (!year) return [];
+  const combined = [];
+  for (let m = 1; m <= 12; m++) {
+    const mm = String(m).padStart(2, '0');
+    const ym = `${String(year)}-${mm}`;
+    try {
+      const agg = await tryLoadAggregatedMonth(ym);
+      if (agg && agg.length) { combined.push(...agg); continue; }
+      const bydir = await loadMonthlyDir(ym);
+      if (bydir && bydir.length) { combined.push(...bydir); continue; }
+    } catch (e) {}
+  }
+  monthlyLoadedRows.value = combined;
+  return combined;
+}
+
 async function loadMonthlyDir(yearMonth) {
   // yearMonth format: 'YYYY-MM' or 'YYYYMM'
   try {
@@ -251,7 +312,7 @@ function renderDist() {
 
 function renderCity() {
   if (!cityChart) return;
-  const type = cityChartType.value || 'bar';
+  const type = rightChartType.value || 'bar';
   const arr = aggregateCity(rows.value, props.pollutant);
   if (!arr.length) { cityChart.setOption({ title: { text: `${props.province} 城市对比 — 无数据`, left:'center' } }); return; }
   if (type === 'bar') {
@@ -352,24 +413,38 @@ function renderRadar() {
 onMounted(() => {
   // initialize radar and city charts
   try { if (document.getElementById('radarChart')) radarChart = echarts.init(document.getElementById('radarChart')); } catch (e) {}
+  try { if (document.getElementById('trendChart')) trendChart = echarts.init(document.getElementById('trendChart')); } catch (e) {}
+  try { if (document.getElementById('distChart')) distChart = echarts.init(document.getElementById('distChart')); } catch (e) {}
   try { cityChart = echarts.init(document.getElementById('cityChart')); } catch (e) {}
   // render according to granularity; radar is always rendered on left
   try {
-    if (props.granularity === 'month' && props.fromMonth) {
-      loadMonthlyDir(props.fromMonth).then(() => {
-        try { renderRadar(); renderCity(); } catch (e) {}
-      }).catch(() => { try { renderRadar(); renderCity(); } catch (e) {} });
+    if (props.granularity === 'year' && props.fromYear) {
+      loadYearData(props.fromYear).then(() => {
+        try { renderTrend(); renderRadar(); } catch (e) {}
+      }).catch(() => { try { renderTrend(); renderRadar(); } catch (e) {} });
+    } else if (props.granularity === 'month' && props.fromMonth) {
+      loadMonthData(props.fromMonth).then(() => {
+        try { if (props.granularity === 'day') renderDist(); else renderTrend(); renderRadar(); } catch (e) {}
+      }).catch(() => { try { if (props.granularity === 'day') renderDist(); else renderTrend(); renderRadar(); } catch (e) {} });
     } else {
       if (props.granularity === 'day') renderDist(); else renderTrend();
       // always render radar
       renderRadar();
     }
   } catch (e) {}
-  renderCity();
+  // render right-side according to selected mode
+  try {
+    if (rightChartType.value === 'trend') {
+      if (props.granularity === 'day') renderDist(); else renderTrend();
+    } else {
+      renderCity();
+    }
+  } catch (e) {}
   // resize handler so charts adapt when container width changes
   try {
     window.__provinceViewResize = () => {
       try { radarChart && radarChart.resize(); } catch (e) {}
+      try { trendChart && trendChart.resize(); } catch (e) {}
       try { distChart && distChart.resize(); } catch (e) {}
       try { cityChart && cityChart.resize(); } catch (e) {}
     };
@@ -387,18 +462,28 @@ onBeforeUnmount(() => {
 
 watch([() => props.data, () => props.pollutant, () => props.granularity, () => props.fromMonth, () => props.fromYear], () => {
   try {
-    if (props.granularity === 'month' && props.fromMonth) {
-      // reload monthly directory and then render
-      loadMonthlyDir(props.fromMonth).then(() => { try { renderRadar(); renderCity(); } catch (e) {} });
+    if (props.granularity === 'year' && props.fromYear) {
+      loadYearData(props.fromYear).then(() => { try { if (rightChartType.value === 'trend') { renderTrend(); } else { renderCity(); } renderRadar(); } catch (e) {} });
+    } else if (props.granularity === 'month' && props.fromMonth) {
+      // reload monthly aggregated file or monthly directory then render
+      loadMonthData(props.fromMonth).then(() => { try { if (rightChartType.value === 'trend') { if (props.granularity === 'day') renderDist(); else renderTrend(); } else { renderCity(); } renderRadar(); } catch (e) {} });
     } else {
       if (props.granularity === 'day') renderDist(); else renderTrend();
       renderRadar();
-      renderCity();
+      if (rightChartType.value === 'trend') { if (props.granularity === 'day') renderDist(); else renderTrend(); } else { renderCity(); }
     }
   } catch (e) {}
 }, { deep: true });
 
-watch(() => cityChartType.value, () => { try { renderCity(); } catch (e) {} });
+watch(() => rightChartType.value, () => {
+  try {
+    if (rightChartType.value === 'trend') {
+      if (props.granularity === 'day') renderDist(); else renderTrend();
+    } else {
+      renderCity();
+    }
+  } catch (e) {}
+});
 </script>
 
 <style scoped>

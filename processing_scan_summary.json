@@ -1,0 +1,37 @@
+{
+  "files": [
+    "processing\\main.py",
+    "processing\\run_pipeline.py",
+    "processing\\src\\aggregate.py",
+    "processing\\src\\config.py",
+    "processing\\src\\geocode_amap.py",
+    "processing\\src\\preprocess.py",
+    "processing\\src\\remove_outliers.py",
+    "processing\\src\\visualize.py",
+    "processing\\src\\__init__.py",
+    "processing\\src\\util\\geo_utils.py",
+    "processing\\src\\util\\io_utils.py",
+    "processing\\src\\util\\readNC.py",
+    "processing\\src\\util\\__init__.py"
+  ],
+  "matches": {
+    "to_parquet": [
+      "processing\\src\\aggregate.py",
+      "processing\\src\\preprocess.py"
+    ],
+    "xarray": [
+      "processing\\src\\preprocess.py",
+      "processing\\src\\util\\io_utils.py"
+    ],
+    "open_dataset": [
+      "processing\\src\\preprocess.py",
+      "processing\\src\\util\\io_utils.py"
+    ],
+    "geopandas": [
+      "processing\\src\\util\\geo_utils.py"
+    ],
+    "sjoin": [
+      "processing\\src\\util\\geo_utils.py"
+    ]
+  }
+}
