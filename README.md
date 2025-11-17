@@ -1,10 +1,11 @@
-# 项目说明文档（中文）
+# 项目说明文档
 
 本文档介绍本仓库的目录结构、主要文件/模块的作用、运行与调试指南，以及与临时文件相关的注意事项。适合在 Windows/conda 环境下运行此数据处理流水线的使用者阅读。
 
 ## 项目概览
 
 这是一个针对气象/空气质量类 NetCDF 数据的处理管道，主要功能：
+
 - 从 ZIP 包中读取 NetCDF（.nc）文件（逐小时或按日聚合）
 - 进行物理边界过滤、离群值处理（IQR / 全局分位裁剪）
 - 将格点数据映射到行政区（市级/省级）并按行政区聚合
@@ -13,25 +14,26 @@
 ## 目录结构（重要文件/文件夹说明）
 
 - `main.py`
+
   - 主入口脚本。控制并行任务数量、调用数据预处理并触发逐月聚合与 ECharts 输出生成。
-
 - `run_single_day_quick.py`
+
   - 快速调试单日处理脚本（参考与对照实现）。用于对比行为并验证单日流程。
-
 - `requirements.txt`
+
   - Python 依赖清单（用于 pip 安装）。建议在 Windows 上优先使用 `conda`/`conda-forge` 安装 `geopandas`、`netCDF4` 等有二进制依赖的包。
-
 - `README.md`
-  - 项目说明与运行指南（本文件为详细说明）。
 
+  - 项目说明与运行指南（本文件为详细说明）。
 - `Data/`
+
   - `raw/`：放原始 ZIP 文件（例如 `CN-ReanalysisYYYYMMDD.zip`）。请按照年份建立子目录（如 `Data/raw/2013/`）。
   - `tmp/`：运行时的临时目录（解压/中间文件）。代码会在可能的情况下尽量减少临时目录的产生并在安全时删除。
   - `processed/`：日级中间结果（按粒度 `city` 或 `grid` 存放子目录），文件格式为 `parquet` 或 `csv`。
   - `aggregated/`：按月/年汇总的聚合结果（用于可视化的中间产物）。
   - `output/`：最终转换为 ECharts 格式或其他可视化产物的输出目录。
-
 - `src/`（主要源码）
+
   - `__init__.py`
   - `config.py`：项目路径与运行配置常量（例如 `MAX_IN_MEMORY_BYTES`、临时目录 manifest 路径等）。
   - `io_utils.py`：核心 I/O 辅助函数
@@ -44,19 +46,9 @@
   - `visualize.py`：把聚合后的 DataFrame 转换为 ECharts 能消费的 JSON/结构
   - `geocode_amap.py`（可选）：调用高德逆地理服务以回填省市（代码支持缓存以避免重复请求）
   - `io_utils.py`：以及临时目录记录/清理逻辑
-
 - `tmp_dirs_to_cleanup.json`
+
   - 记录运行过程中需要后续清理的临时目录路径（当 `DEFER_CLEANUP=True` 时会写入）。可通过 `src.io_utils.cleanup_tmp_dirs()` 批量清除。
-
-## 快速运行与常用环境变量（Windows 命令行示例）
-
-建议使用 Conda 环境并在 `conda-forge` 中安装二进制包：
-
-# 项目说明文档（中文）
-
-本仓库实现了针对 NetCDF（.nc）数据的处理流水线，目标是从 ZIP 包中读取数据、生成日级中间产物、再按月/行政区聚合并输出供前端可视化使用（ECharts JSON）。
-
-本 README 侧重于：仓库结构说明、运行示例（Windows/cmd）、重要环境变量以及迁移到 `processing/` 模块时的注意事项。
 
 ## 主要功能概览
 
@@ -68,16 +60,16 @@
 ## 目录结构（重要文件/文件夹）
 
 - `processing/`：处理模块（包含 `processing/src/` 与 `processing/main.py`）。
+  - `src/`：主实现代码：
+    - `src/config.py`：全局路径与运行参数（`MAX_IN_MEMORY_BYTES`、`TMP_CLEANUP_MANIFEST` 等）
+    - `src/io_utils.py`：内存优先读取 ZIP/.nc、临时目录管理与清理接口
+    - `src/preprocess.py`、`src/aggregate.py`、`src/visualize.py` 等：核心处理与导出逻辑
+- `tmp_dirs_to_cleanup.json`：记录需要手动/延迟清理的临时目录（当 `DEFER_CLEANUP=True` 时写入）
 - `resources/`：数据根目录（推荐放在仓库根）。包含：
   - `raw/`（ZIP 原始数据，建议按年分子目录）
   - `processed/`（日级中间结果，按粒度如 `city` 或 `grid`）
   - `aggregated/`（月度/年聚合结果）
   - `output/`（最终可视化产物，例如 ECharts JSON）
-- `src/`：主实现代码
-  - `src/config.py`：全局路径与运行参数（`MAX_IN_MEMORY_BYTES`、`TMP_CLEANUP_MANIFEST` 等）
-  - `src/io_utils.py`：内存优先读取 ZIP/.nc、临时目录管理与清理接口
-  - `src/preprocess.py`、`src/aggregate.py`、`src/visualize.py` 等：核心处理与导出逻辑
-- `tmp_dirs_to_cleanup.json`：记录需要手动/延迟清理的临时目录（当 `DEFER_CLEANUP=True` 时写入）
 
 ## 快速安装（建议使用 conda）
 
@@ -121,6 +113,7 @@ E:\Anaconda\envs\fgo_downloader\python.exe g:/学习相关/可视化计算/China
 ```
 
 参数说明快速参考：
+
 - `--step`: `extract` | `aggregate` | `export` | `all`（默认 `all`）
 - `--year`: 指定年份（例如 2013）
 - `--processed-root`: 指定 day-level 文件位置（覆盖 `src/config.PROCESSED_DIR`）
@@ -140,9 +133,3 @@ cleanup_tmp_dirs()
 1. 内存/后端错误：在 Windows 上优先用 conda 安装 `netcdf4`/`h5py`，或开启 `PREPROCESS_FORCE_DISK=1` 回退解压；减少 `MAX_IN_MEMORY_BYTES` 可降低内存压力。
 2. 处理不到数据：确认 `resources/raw/`（或 `processing/resources/raw/`）下是否有 zip，或通过 `--processed-root`/`--aggregated-dir` 指向正确位置。
 3. 地理映射（行政区为空）：检查 `gadm` GeoJSON 是否正确放置并与 `src/geo_utils.py` 中的字段候选项匹配。
-
-## 调试常见问题
-
-1. "提交很多 job 后进程退出"：确认 `PREPROCESS_DEBUG=1`，观察线程池的 `submitted ... jobs` 后是否有异常打印。通常通过查看每个 task 的 start/success/failed 日志可定位出错的 zip 文件。
-2. "看到 NA/空行政名": 开启 `PREPROCESS_DEBUG=1`，检查 `mapped_coords` 与 `merged` 的 sample 输出，确认 GeoJSON 的列名（NAME_1/NAME_2 或者 NL_NAME_*）是否与代码匹配，必要时在 `src/geo_utils.py` 中调整候选列顺序。
-3. "内存/后端错误": 在 Windows 上优先用 conda 安装 `netcdf4`/`h5py` 并设置 `PREPROCESS_FORCE_DISK=1` 回退到磁盘解压；或减小 `MAX_IN_MEMORY_BYTES`。

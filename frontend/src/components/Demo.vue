@@ -75,6 +75,17 @@
             <section class="chart large">
               <div id="rankChart" class="chart-canvas"></div>
             </section>
+            <!-- Parallel coordinates below the preview and ranking charts -->
+            <section class="chart large">
+              <div style="display:flex; align-items:center; gap:12px; padding:8px 12px;">
+                <strong style="color:#000">并行坐标 — 选择污染物：</strong>
+                <label v-for="p in candidatePollutants" :key="p" style="display:inline-flex;align-items:center;gap:6px;margin-right:8px;color:#000">
+                  <input type="checkbox" :value="p" v-model="selectedPollutants" /> {{ p }}
+                </label>
+                <button class="btn" @click="resetParallelSelection">重置</button>
+              </div>
+              <div id="parallelChart" class="chart-canvas"></div>
+            </section>
           </template>
           <template v-else>
             <!-- when a province is selected, show province-level component -->
@@ -128,6 +139,11 @@ const showTable = ref(true);
 const loadPath = ref('');
 const selectedProvince = ref(null);
 const attemptedCandidates = ref([]);
+
+// parallel chart state
+const candidatePollutants = ['pm25','pm10','so2','no2','co','o3'];
+const selectedPollutants = ref(candidatePollutants.slice(0, 4));
+let parallelChart = null;
 
 // remember last auto-loaded key to avoid duplicate loads
 let lastAutoLoadedKey = null;
@@ -622,11 +638,29 @@ function initCharts() {
   const rankDom = document.getElementById('rankChart');
   if (!rankDom) { showDiag('rankChart DOM element not found (id=rankChart)'); return; }
   try { rankChart = echarts.init(rankDom); } catch (e) { showDiag('Failed to init rank chart: '+e.message); return; }
+  // init parallel chart if present
+  try {
+    const parDom = document.getElementById('parallelChart');
+    if (parDom) parallelChart = echarts.init(parDom);
+  } catch (e) { parallelChart = null; }
   showDiag('ECharts initialized — rendering charts');
   renderAll();
   // ensure map click handlers are attached after charts are initialized
   try { attachMapClickHandlers(); } catch (e) {}
-  window.addEventListener('resize', () => { mapChart && mapChart.resize(); rankChart && rankChart.resize(); });
+  // listen to parallel chart city selection events
+  try {
+    window.__onProvinceViewCitySelected = (ev) => {
+      try {
+        const city = ev && ev.detail && ev.detail.city;
+        if (city) {
+          selectedProvince.value = city;
+          updateDiag('已选(来自并行坐标): ' + city);
+        }
+      } catch (e) {}
+    };
+    window.addEventListener('provinceview-city-selected', window.__onProvinceViewCitySelected);
+  } catch (e) {}
+  window.addEventListener('resize', () => { mapChart && mapChart.resize(); rankChart && rankChart.resize(); parallelChart && parallelChart.resize(); });
 }
 
 // centralize attachment of click handlers for the preview map chart
@@ -671,23 +705,47 @@ function attachMapClickHandlers() {
   } catch (e) {}
 }
 
-function renderAll() { renderMap(); renderRanking(); }
+// renderAll is declared later (includes parallel). remove this earlier duplicate.
 
 function renderMap() {
   const hasCoords = filtered.value.some(r => r.lon !== undefined && r.lat !== undefined && !isNaN(Number(r.lon)) && !isNaN(Number(r.lat)));
   if (hasCoords) {
     const data = filtered.value.map((r, idx) => ({ name: r.city || `p${idx}`, value: [Number(r.lon) || 0, Number(r.lat) || 0, Number(selectedPollutant.value ? r[selectedPollutant.value] : 0) || 0], raw: r }));
-    const option = {
-      title: { text: `散点地图` + (selectedPollutant.value ? ` — ${selectedPollutant.value.toUpperCase()}` : ''), left: 'center' },
-      tooltip: { trigger: 'item', formatter: params => {
-        const d = params.data.raw; const parts = [];
-        for (const k of Object.keys(d || {})) parts.push(`${k}: ${d[k]}`);
-        return parts.join('<br/>');
-      } },
-      xAxis: { name: 'lon', type: 'value' }, yAxis: { name: 'lat', type: 'value' }, grid: { left: 40, right: 20, top: 60, bottom: 40 },
-      series: [{ type: 'scatter', symbolSize: val => Math.max(4, Math.sqrt(val[2] || 0) * 1.8), data: data, encode: { x: 0, y: 1, value: 2 } }]
-    };
-    mapChart.setOption(option);
+    // try to load GeoJSON for nicer heatmap (GADM provided in resources/GADM)
+    (async () => {
+      const geoPath = '/resources/GADM/gadm41_CHN_2.json';
+      let gj = null;
+      try {
+        const res = await fetch(geoPath);
+        if (res && res.ok) gj = await res.json();
+      } catch (e) { gj = null; }
+      if (gj) {
+        try {
+          echarts.registerMap('CHN', gj);
+        } catch (e) {}
+        const option = {
+          title: { text: `污染热力图` + (selectedPollutant.value ? ` — ${selectedPollutant.value.toUpperCase()}` : ''), left: 'center' },
+          tooltip: { trigger: 'item', formatter: params => { if (params.seriesType === 'heatmap' || params.seriesType === 'scatter') { const d = params.data; return `${d && d[3] ? d[3].city || '' : ''}<br/>${selectedPollutant.value}: ${d && d[2]}`; } return params.name; } },
+          visualMap: { min: 0, max: Math.max(...data.map(d=>d.value[2]||0)), realtime: false, calculable: true, inRange: { color: ['#50a3ba','#eac736','#d94e5d'] } },
+          geo: { map: 'CHN', roam: true, silent: true },
+          series: [{ type: 'heatmap', coordinateSystem: 'geo', data: data.map(d => [d.value[0], d.value[1], d.value[2], d.raw]) }]
+        };
+        mapChart.setOption(option);
+        return;
+      }
+      // fallback: scatter
+      const option = {
+        title: { text: `散点地图` + (selectedPollutant.value ? ` — ${selectedPollutant.value.toUpperCase()}` : ''), left: 'center' },
+        tooltip: { trigger: 'item', formatter: params => {
+          const d = params.data.raw; const parts = [];
+          for (const k of Object.keys(d || {})) parts.push(`${k}: ${d[k]}`);
+          return parts.join('<br/>');
+        } },
+        xAxis: { name: 'lon', type: 'value' }, yAxis: { name: 'lat', type: 'value' }, grid: { left: 40, right: 20, top: 60, bottom: 40 },
+        series: [{ type: 'scatter', symbolSize: val => Math.max(4, Math.sqrt(val[2] || 0) * 1.8), data: data, encode: { x: 0, y: 1, value: 2 } }]
+      };
+      mapChart.setOption(option);
+    })();
   } else {
     // no coords: show a preview pie of counts by a categorical key (top categories)
     const firstRow = filtered.value[0] || {};
@@ -791,6 +849,69 @@ function renderRanking() {
   const option = { title: { text: `按 ${groupKey} 平均值排名` + (selectedPollutant.value ? `（${selectedPollutant.value.toUpperCase()}）` : ''), left: 'center' }, tooltip: { trigger: 'axis' }, xAxis: { type: 'value' }, yAxis: { type: 'category', data: top.map(d => d.key).reverse() }, series: [{ type: 'bar', data: top.map(d => d.val).reverse() }] };
   rankChart.setOption(option);
 }
+function renderParallel() {
+  try {
+    if (!parallelChart) return;
+    const rows = filtered.value || [];
+    if (!rows.length) {
+      parallelChart.setOption({ title: { text: '并行坐标：无数据', left: 'center' } });
+      return;
+    }
+    const pollutants = (selectedPollutants.value && selectedPollutants.value.length) ? selectedPollutants.value : candidatePollutants;
+    const stats = {};
+    for (const p of pollutants) {
+      const vals = rows.map(r => Number(r[p])).filter(v => !isNaN(v));
+      stats[p] = { min: vals.length ? Math.min(...vals) : 0, max: vals.length ? Math.max(...vals) : 1 };
+      if (stats[p].min === stats[p].max) stats[p].max = stats[p].min + 1;
+    }
+    const seriesData = rows.map(r => {
+      const vals = pollutants.map(p => {
+        const v = Number(r[p]);
+        if (isNaN(v)) return 0;
+        const s = stats[p];
+        return (v - s.min) / (s.max - s.min);
+      });
+      return { value: vals.concat([r.city || r.province || '']), raw: r };
+    }).slice(0, 2000);
+
+    const parallelAxis = pollutants.map((p, i) => ({ dim: i, name: p, min: 0, max: 1, axisLabel: { color: '#000', formatter: v => { const real = (v * (stats[p].max - stats[p].min) + stats[p].min); return Number(real).toFixed(1); } }, nameTextStyle: { color: '#000' } }));
+    const option = {
+      title: { text: `并行坐标（城市）`, left: 'center', textStyle: { color: '#000' } },
+      tooltip: { trigger: 'item', formatter: params => {
+        const raw = params.data && params.data.raw;
+        if (!raw) return params.name || '';
+        const parts = [`城市: ${raw.city || raw.province || 'N/A'}`];
+        for (const p of pollutants) parts.push(`${p}: ${raw[p]}`);
+        return parts.join('<br/>');
+      }},
+      parallel: { left: '5%', right: '8%', top: 60, bottom: 30 },
+      parallelAxis,
+      visualMap: { show: true, min: 0, max: 1, dimension: 0, inRange: { color: ['#50a3ba','#eac736','#d94e5d'] } },
+      series: [{ name: 'parallel', type: 'parallel', lineStyle: { width: 1, opacity: 0.6 }, data: seriesData, progressive: 1000, large: true }]
+    };
+    parallelChart.setOption(option, { notMerge: true });
+    parallelChart.off('click');
+    parallelChart.on('click', params => {
+      try {
+        const city = params && params.data && params.data.raw && (params.data.raw.city || params.data.raw.province);
+        if (city) {
+          const ev = new CustomEvent('provinceview-city-selected', { detail: { city } });
+          window.dispatchEvent(ev);
+        }
+      } catch (e) {}
+    });
+  } catch (e) {
+    try { parallelChart.setOption({ title: { text: '并行坐标渲染失败' } }); } catch (e) {}
+  }
+}
+function renderAll() { renderMap(); renderRanking(); try { renderParallel(); } catch (e) {} }
+
+function resetParallelSelection() {
+  selectedPollutants.value = candidatePollutants.slice(0, 4);
+  try { renderParallel(); } catch (e) {}
+}
+
+watch(selectedPollutants, () => { try { renderParallel(); } catch (e) {} });
 
 function resetFilters() { fromDate.value = ''; toDate.value = ''; fromMonth.value = ''; toMonth.value = ''; fromYear.value = new Date().getFullYear(); toYear.value = new Date().getFullYear(); fromDateTime.value = ''; toDateTime.value = ''; selectedPollutant.value = (numericColumns.value && numericColumns.value.length) ? numericColumns.value[0] : ''; renderAll(); }
 
