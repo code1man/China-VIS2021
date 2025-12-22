@@ -1,0 +1,345 @@
+{
+  "city": "大连市",
+  "all": [
+    {
+      "dir": "N",
+      "freq": 5.48,
+      "value": 43.2,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "NNE",
+      "freq": 6.58,
+      "value": 52.47,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "NE",
+      "freq": 4.38,
+      "value": 73.79,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "ENE",
+      "freq": 5.48,
+      "value": 78.87,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "E",
+      "freq": 4.66,
+      "value": 54.39,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "ESE",
+      "freq": 3.84,
+      "value": 50.94,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SE",
+      "freq": 9.04,
+      "value": 33.38,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "SSE",
+      "freq": 13.42,
+      "value": 38.42,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "S",
+      "freq": 16.44,
+      "value": 45.77,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SSW",
+      "freq": 4.38,
+      "value": 49.61,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SW",
+      "freq": 1.64,
+      "value": 49.4,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "WSW",
+      "freq": 3.56,
+      "value": 61.02,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "W",
+      "freq": 3.84,
+      "value": 48.76,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "WNW",
+      "freq": 4.38,
+      "value": 48.53,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "NW",
+      "freq": 4.93,
+      "value": 45.62,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "NNW",
+      "freq": 7.95,
+      "value": 46.47,
+      "level": "良",
+      "color": "#FFFF00"
+    }
+  ],
+  "heating": [
+    {
+      "dir": "N",
+      "freq": 0.83,
+      "value": 30.85,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "NNE",
+      "freq": 0.83,
+      "value": 42.93,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "NE",
+      "freq": 4.17,
+      "value": 108.33,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "ENE",
+      "freq": 8.33,
+      "value": 102.6,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "E",
+      "freq": 5.0,
+      "value": 64.52,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "ESE",
+      "freq": 5.83,
+      "value": 60.78,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SE",
+      "freq": 8.33,
+      "value": 42.95,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SSE",
+      "freq": 22.5,
+      "value": 46.38,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "S",
+      "freq": 29.17,
+      "value": 53.95,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SSW",
+      "freq": 3.33,
+      "value": 88.3,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "SW",
+      "freq": 1.67,
+      "value": 87.97,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "WSW",
+      "freq": 4.17,
+      "value": 88.76,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "W",
+      "freq": 0.83,
+      "value": 113.54,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "WNW",
+      "freq": 0.83,
+      "value": 145.47,
+      "level": "中度污染",
+      "color": "#FF0000"
+    },
+    {
+      "dir": "NW",
+      "freq": 0.83,
+      "value": 106.6,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "NNW",
+      "freq": 3.33,
+      "value": 55.8,
+      "level": "良",
+      "color": "#FFFF00"
+    }
+  ],
+  "nonHeating": [
+    {
+      "dir": "N",
+      "freq": 7.76,
+      "value": 43.85,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "NNE",
+      "freq": 9.39,
+      "value": 52.88,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "NE",
+      "freq": 4.49,
+      "value": 58.1,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "ENE",
+      "freq": 4.08,
+      "value": 55.14,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "E",
+      "freq": 4.49,
+      "value": 48.87,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "ESE",
+      "freq": 2.86,
+      "value": 41.1,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SE",
+      "freq": 9.39,
+      "value": 29.21,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "SSE",
+      "freq": 8.98,
+      "value": 28.65,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "S",
+      "freq": 10.2,
+      "value": 34.33,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "SSW",
+      "freq": 4.9,
+      "value": 36.71,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SW",
+      "freq": 1.63,
+      "value": 30.12,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "WSW",
+      "freq": 3.27,
+      "value": 43.68,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "W",
+      "freq": 5.31,
+      "value": 43.78,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "WNW",
+      "freq": 6.12,
+      "value": 42.07,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "NW",
+      "freq": 6.94,
+      "value": 42.04,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "NNW",
+      "freq": 10.2,
+      "value": 44.97,
+      "level": "良",
+      "color": "#FFFF00"
+    }
+  ]
+}

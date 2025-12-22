@@ -1,0 +1,345 @@
+{
+  "city": "石嘴山市",
+  "all": [
+    {
+      "dir": "N",
+      "freq": 7.12,
+      "value": 26.97,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "NNE",
+      "freq": 4.66,
+      "value": 39.47,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "NE",
+      "freq": 4.38,
+      "value": 30.32,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "ENE",
+      "freq": 2.74,
+      "value": 70.15,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "E",
+      "freq": 9.59,
+      "value": 72.61,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "ESE",
+      "freq": 15.34,
+      "value": 47.39,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SE",
+      "freq": 15.62,
+      "value": 35.71,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SSE",
+      "freq": 8.77,
+      "value": 36.37,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "S",
+      "freq": 3.84,
+      "value": 36.39,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SSW",
+      "freq": 4.66,
+      "value": 36.12,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SW",
+      "freq": 2.47,
+      "value": 49.47,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "WSW",
+      "freq": 4.66,
+      "value": 34.44,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "W",
+      "freq": 3.56,
+      "value": 27.96,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "WNW",
+      "freq": 4.93,
+      "value": 35.97,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "NW",
+      "freq": 2.74,
+      "value": 38.33,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "NNW",
+      "freq": 4.93,
+      "value": 34.83,
+      "level": "优",
+      "color": "#00E400"
+    }
+  ],
+  "heating": [
+    {
+      "dir": "N",
+      "freq": 0.83,
+      "value": 38.13,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "NNE",
+      "freq": 3.33,
+      "value": 82.45,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "NE",
+      "freq": 2.5,
+      "value": 44.42,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "ENE",
+      "freq": 4.17,
+      "value": 95.34,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "E",
+      "freq": 15.83,
+      "value": 99.41,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "ESE",
+      "freq": 23.33,
+      "value": 60.29,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SE",
+      "freq": 18.33,
+      "value": 36.69,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SSE",
+      "freq": 7.5,
+      "value": 43.37,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "S",
+      "freq": 2.5,
+      "value": 31.01,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "SSW",
+      "freq": 1.67,
+      "value": 40.31,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SW",
+      "freq": 5.0,
+      "value": 55.09,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "WSW",
+      "freq": 5.0,
+      "value": 42.85,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "W",
+      "freq": 2.5,
+      "value": 39.29,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "WNW",
+      "freq": 5.0,
+      "value": 56.36,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "NW",
+      "freq": 1.67,
+      "value": 49.32,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "NNW",
+      "freq": 0.83,
+      "value": 71.66,
+      "level": "良",
+      "color": "#FFFF00"
+    }
+  ],
+  "nonHeating": [
+    {
+      "dir": "N",
+      "freq": 10.2,
+      "value": 26.53,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "NNE",
+      "freq": 5.31,
+      "value": 26.25,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "NE",
+      "freq": 5.31,
+      "value": 27.07,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "ENE",
+      "freq": 2.04,
+      "value": 44.96,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "E",
+      "freq": 6.53,
+      "value": 40.79,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "ESE",
+      "freq": 11.43,
+      "value": 34.48,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "SE",
+      "freq": 14.29,
+      "value": 35.09,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SSE",
+      "freq": 9.39,
+      "value": 33.64,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "S",
+      "freq": 4.49,
+      "value": 37.85,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SSW",
+      "freq": 6.12,
+      "value": 35.56,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SW",
+      "freq": 1.22,
+      "value": 38.23,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "WSW",
+      "freq": 4.49,
+      "value": 29.85,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "W",
+      "freq": 4.08,
+      "value": 24.57,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "WNW",
+      "freq": 4.9,
+      "value": 25.77,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "NW",
+      "freq": 3.27,
+      "value": 35.59,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "NNW",
+      "freq": 6.94,
+      "value": 32.66,
+      "level": "优",
+      "color": "#00E400"
+    }
+  ]
+}

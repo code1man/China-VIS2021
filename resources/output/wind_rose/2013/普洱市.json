@@ -1,0 +1,345 @@
+{
+  "city": "普洱市",
+  "all": [
+    {
+      "dir": "N",
+      "freq": 9.59,
+      "value": 33.12,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "NNE",
+      "freq": 9.32,
+      "value": 25.84,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "NE",
+      "freq": 10.96,
+      "value": 21.81,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "ENE",
+      "freq": 13.42,
+      "value": 19.87,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "E",
+      "freq": 12.6,
+      "value": 24.22,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "ESE",
+      "freq": 5.21,
+      "value": 23.11,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "SE",
+      "freq": 0.55,
+      "value": 25.6,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "SSE",
+      "freq": 0.82,
+      "value": 22.36,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "S",
+      "freq": 0.27,
+      "value": 30.19,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "SSW",
+      "freq": 0.0,
+      "value": 0,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "SW",
+      "freq": 1.64,
+      "value": 33.82,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "WSW",
+      "freq": 4.11,
+      "value": 26.57,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "W",
+      "freq": 4.11,
+      "value": 25.71,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "WNW",
+      "freq": 4.66,
+      "value": 31.29,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "NW",
+      "freq": 10.96,
+      "value": 31.04,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "NNW",
+      "freq": 11.78,
+      "value": 32.24,
+      "level": "优",
+      "color": "#00E400"
+    }
+  ],
+  "heating": [
+    {
+      "dir": "N",
+      "freq": 17.5,
+      "value": 34.1,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "NNE",
+      "freq": 11.67,
+      "value": 30.65,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "NE",
+      "freq": 8.33,
+      "value": 30.17,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "ENE",
+      "freq": 8.33,
+      "value": 20.07,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "E",
+      "freq": 3.33,
+      "value": 16.85,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "ESE",
+      "freq": 2.5,
+      "value": 14.36,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "SE",
+      "freq": 0.0,
+      "value": 0,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "SSE",
+      "freq": 0.0,
+      "value": 0,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "S",
+      "freq": 0.0,
+      "value": 0,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "SSW",
+      "freq": 0.0,
+      "value": 0,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "SW",
+      "freq": 1.67,
+      "value": 31.88,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "WSW",
+      "freq": 3.33,
+      "value": 24.28,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "W",
+      "freq": 1.67,
+      "value": 25.16,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "WNW",
+      "freq": 4.17,
+      "value": 29.91,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "NW",
+      "freq": 15.0,
+      "value": 30.67,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "NNW",
+      "freq": 22.5,
+      "value": 34.64,
+      "level": "优",
+      "color": "#00E400"
+    }
+  ],
+  "nonHeating": [
+    {
+      "dir": "N",
+      "freq": 5.71,
+      "value": 31.65,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "NNE",
+      "freq": 8.16,
+      "value": 22.47,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "NE",
+      "freq": 12.24,
+      "value": 19.02,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "ENE",
+      "freq": 15.92,
+      "value": 19.82,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "E",
+      "freq": 17.14,
+      "value": 24.92,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "ESE",
+      "freq": 6.53,
+      "value": 24.76,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "SE",
+      "freq": 0.82,
+      "value": 25.6,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "SSE",
+      "freq": 1.22,
+      "value": 22.36,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "S",
+      "freq": 0.41,
+      "value": 30.19,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "SSW",
+      "freq": 0.0,
+      "value": 0,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "SW",
+      "freq": 1.63,
+      "value": 34.78,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "WSW",
+      "freq": 4.49,
+      "value": 27.4,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "W",
+      "freq": 5.31,
+      "value": 25.79,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "WNW",
+      "freq": 4.9,
+      "value": 31.86,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "NW",
+      "freq": 8.98,
+      "value": 31.34,
+      "level": "优",
+      "color": "#00E400"
+    },
+    {
+      "dir": "NNW",
+      "freq": 6.53,
+      "value": 28.19,
+      "level": "优",
+      "color": "#00E400"
+    }
+  ]
+}

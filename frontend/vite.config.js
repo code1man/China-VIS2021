@@ -22,9 +22,15 @@ export default defineConfig({
         try {
           if (!req.url || !req.url.startsWith('/resources/')) return next();
           // map /resources/... to repo root ../resources/...
-          const rel = req.url.replace(/^\/resources\//, '');
+          // 解码 URL 以处理中文文件名
+          const decodedUrl = decodeURIComponent(req.url);
+          const rel = decodedUrl.replace(/^\/resources\//, '');
           const repoResources = path.resolve(__dirname, '..', 'resources', rel);
-          if (!fs.existsSync(repoResources)) return next();
+          console.log('[serve-resources]', req.url, '->', repoResources); // 调试日志
+          if (!fs.existsSync(repoResources)) {
+            console.log('[serve-resources] NOT FOUND:', repoResources);
+            return next();
+          }
           const stat = fs.statSync(repoResources);
           if (stat.isDirectory()) {
             // simple directory listing

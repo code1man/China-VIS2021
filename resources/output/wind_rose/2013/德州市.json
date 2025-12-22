@@ -1,0 +1,345 @@
+{
+  "city": "德州市",
+  "all": [
+    {
+      "dir": "N",
+      "freq": 14.52,
+      "value": 104.22,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "NNE",
+      "freq": 16.71,
+      "value": 100.3,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "NE",
+      "freq": 6.03,
+      "value": 121.09,
+      "level": "中度污染",
+      "color": "#FF0000"
+    },
+    {
+      "dir": "ENE",
+      "freq": 3.84,
+      "value": 100.34,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "E",
+      "freq": 2.74,
+      "value": 84.35,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "ESE",
+      "freq": 2.74,
+      "value": 107.84,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "SE",
+      "freq": 4.38,
+      "value": 61.73,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SSE",
+      "freq": 4.11,
+      "value": 87.23,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "S",
+      "freq": 7.67,
+      "value": 106.86,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "SSW",
+      "freq": 6.85,
+      "value": 119.24,
+      "level": "中度污染",
+      "color": "#FF0000"
+    },
+    {
+      "dir": "SW",
+      "freq": 7.4,
+      "value": 109.22,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "WSW",
+      "freq": 6.3,
+      "value": 105.79,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "W",
+      "freq": 3.84,
+      "value": 109.35,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "WNW",
+      "freq": 2.74,
+      "value": 142.65,
+      "level": "中度污染",
+      "color": "#FF0000"
+    },
+    {
+      "dir": "NW",
+      "freq": 3.84,
+      "value": 117.94,
+      "level": "中度污染",
+      "color": "#FF0000"
+    },
+    {
+      "dir": "NNW",
+      "freq": 6.3,
+      "value": 95.29,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    }
+  ],
+  "heating": [
+    {
+      "dir": "N",
+      "freq": 5.0,
+      "value": 183.18,
+      "level": "重度污染",
+      "color": "#99004C"
+    },
+    {
+      "dir": "NNE",
+      "freq": 13.33,
+      "value": 164.2,
+      "level": "重度污染",
+      "color": "#99004C"
+    },
+    {
+      "dir": "NE",
+      "freq": 6.67,
+      "value": 189.52,
+      "level": "重度污染",
+      "color": "#99004C"
+    },
+    {
+      "dir": "ENE",
+      "freq": 2.5,
+      "value": 150.82,
+      "level": "重度污染",
+      "color": "#99004C"
+    },
+    {
+      "dir": "E",
+      "freq": 5.83,
+      "value": 82.58,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "ESE",
+      "freq": 3.33,
+      "value": 170.23,
+      "level": "重度污染",
+      "color": "#99004C"
+    },
+    {
+      "dir": "SE",
+      "freq": 6.67,
+      "value": 70.12,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SSE",
+      "freq": 9.17,
+      "value": 101.04,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "S",
+      "freq": 12.5,
+      "value": 146.61,
+      "level": "中度污染",
+      "color": "#FF0000"
+    },
+    {
+      "dir": "SSW",
+      "freq": 10.83,
+      "value": 168.74,
+      "level": "重度污染",
+      "color": "#99004C"
+    },
+    {
+      "dir": "SW",
+      "freq": 9.17,
+      "value": 173.61,
+      "level": "重度污染",
+      "color": "#99004C"
+    },
+    {
+      "dir": "WSW",
+      "freq": 5.83,
+      "value": 160.09,
+      "level": "重度污染",
+      "color": "#99004C"
+    },
+    {
+      "dir": "W",
+      "freq": 2.5,
+      "value": 188.71,
+      "level": "重度污染",
+      "color": "#99004C"
+    },
+    {
+      "dir": "WNW",
+      "freq": 2.5,
+      "value": 252.48,
+      "level": "严重污染",
+      "color": "#7E0023"
+    },
+    {
+      "dir": "NW",
+      "freq": 1.67,
+      "value": 247.01,
+      "level": "重度污染",
+      "color": "#99004C"
+    },
+    {
+      "dir": "NNW",
+      "freq": 2.5,
+      "value": 150.42,
+      "level": "重度污染",
+      "color": "#99004C"
+    }
+  ],
+  "nonHeating": [
+    {
+      "dir": "N",
+      "freq": 19.18,
+      "value": 94.14,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "NNE",
+      "freq": 18.37,
+      "value": 77.58,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "NE",
+      "freq": 5.71,
+      "value": 81.99,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "ENE",
+      "freq": 4.49,
+      "value": 86.58,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "E",
+      "freq": 1.22,
+      "value": 88.48,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "ESE",
+      "freq": 2.45,
+      "value": 66.25,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SE",
+      "freq": 3.27,
+      "value": 53.34,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SSE",
+      "freq": 1.63,
+      "value": 49.25,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "S",
+      "freq": 5.31,
+      "value": 60.98,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SSW",
+      "freq": 4.9,
+      "value": 65.62,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "SW",
+      "freq": 6.53,
+      "value": 64.95,
+      "level": "良",
+      "color": "#FFFF00"
+    },
+    {
+      "dir": "WSW",
+      "freq": 6.53,
+      "value": 82.04,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "W",
+      "freq": 4.49,
+      "value": 87.71,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "WNW",
+      "freq": 2.86,
+      "value": 95.59,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "NW",
+      "freq": 4.9,
+      "value": 96.43,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    },
+    {
+      "dir": "NNW",
+      "freq": 8.16,
+      "value": 87.02,
+      "level": "轻度污染",
+      "color": "#FF7E00"
+    }
+  ]
+}

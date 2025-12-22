@@ -1008,41 +1008,373 @@ function clearSelection() { selectedProvince.value = null; updateDiag('已清除
 </script>
 
 <style scoped>
-.demo-root { background: #f6f8fa; padding-bottom: 28px; }
-.demo-root header h1 { color: #111; margin: 8px 0; }
-.demo-header { background: #000; padding: 14px 12px; border-radius: 6px; margin: 12px auto; max-width:1200px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
-.demo-header { position: relative; }
-.demo-header h1 { color: #fff; margin: 0 0 8px 0; font-size: 1.25rem; }
-.controls { display:flex; justify-content:space-between; align-items:center; gap:12px; max-width:1200px; margin:8px auto; padding:6px; position:sticky; top:8px; background:transparent; z-index:80; }
-.controls-left { display:flex; align-items:center; gap:8px; }
-.controls-right { display:flex; align-items:center; gap:8px; }
-.selection-indicator { display:flex; align-items:center; gap:6px; }
-.header-selection { position: absolute; right: 18px; top: 14px; background: transparent; }
-.header-selection .sel-inner { display:flex; align-items:center; gap:8px }
-.btn { background:#2b8aef; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; }
-.btn:hover { background:#196fd1 }
-.uploader input { margin-left:6px }
-.diag { padding:8px 12px;color:#a00;max-width:1100px;margin:8px auto;font-size:13px }
-.diag.error { background:#3b0b0b; color:#fff; padding:10px; border-radius:4px }
-.debug-box { max-width:1200px; margin:8px auto; background:#fff; padding:8px; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.04); color: #000; }
-.debug-box strong { color: #000; }
-.sample-json { max-height:160px; overflow:auto; background:#f8f9fb; padding:8px; border-radius:4px; }
-.controls label, .controls select, .controls input { color: #fff; }
-.files strong { color: #111; }
-.path-input { margin-left:8px; width:300px; padding:6px; border-radius:4px; border:1px solid #333; background:#000; color:#fff }
-.controls select, .controls input[type="date"], .controls input[type="month"], .controls input[type="number"], .controls input[type="datetime-local"] { background:#000; color:#fff; border:1px solid #333; padding:6px 8px; border-radius:4px }
-.grid { display:grid; grid-template-columns: 1fr; gap: 16px; max-width:1200px; margin:12px auto; align-items:start; }
-.left { display:flex; flex-direction:column; gap:12px; }
-.right { display:flex; flex-direction:column; gap:12px; }
-.chart-canvas { width: 100%; height: 420px; background: #ffffff; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); z-index:10 }
-.chart.small .chart-canvas { height: 220px; }
-.data-table { background: #ffffff; padding: 10px; border-radius:6px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
-table { width: 100%; border-collapse: collapse; }
-th, td { border: 1px solid #eee; padding: 6px; text-align: left; color: #111; }
-th { background: #f3f6f9; color: #111; }
+/* === Demo Root Container === */
+.demo-root { 
+  background: transparent; 
+  padding-bottom: 32px; 
+  min-height: 100%;
+}
 
+.demo-root header h1 { 
+  color: #e2e8f0; 
+  margin: 8px 0; 
+}
+
+/* === Header with Glassmorphism === */
+.demo-header { 
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 20px 24px; 
+  border-radius: 16px; 
+  margin: 0 auto 20px auto; 
+  max-width: 1400px; 
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.demo-header h1 { 
+  color: #e2e8f0; 
+  margin: 0 0 16px 0; 
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* === Controls Bar === */
+.controls { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  gap: 16px; 
+  max-width: 1400px; 
+  margin: 8px auto; 
+  padding: 16px 20px;
+  position: sticky; 
+  top: 80px; 
+  background: rgba(30, 41, 59, 0.9);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  z-index: 80;
+}
+
+.controls-left { 
+  display: flex; 
+  align-items: center; 
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.controls-right { 
+  display: flex; 
+  align-items: center; 
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.selection-indicator { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+}
+
+.header-selection { 
+  position: absolute; 
+  right: 24px; 
+  top: 20px; 
+  background: transparent; 
+}
+
+.header-selection .sel-inner { 
+  display: flex; 
+  align-items: center; 
+  gap: 10px;
+}
+
+/* === Buttons === */
+.btn { 
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #fff; 
+  border: none; 
+  padding: 10px 16px; 
+  border-radius: 10px; 
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.btn:hover { 
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+}
+
+.btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* === File Uploader === */
+.uploader { 
+  color: #94a3b8;
+}
+
+.uploader input { 
+  margin-left: 8px;
+  color: #e2e8f0;
+}
+
+/* === Diagnostic Messages === */
+.diag { 
+  padding: 12px 16px;
+  color: #f59e0b;
+  max-width: 1400px;
+  margin: 12px auto;
+  font-size: 0.8rem;
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.diag.error { 
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171; 
+  padding: 12px 16px; 
+  border-radius: 8px;
+}
+
+/* === Debug Box === */
+.debug-box { 
+  max-width: 1400px; 
+  margin: 12px auto; 
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 14px 18px; 
+  border-radius: 12px; 
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); 
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.debug-box strong { 
+  color: #e2e8f0; 
+}
+
+.sample-json { 
+  max-height: 160px; 
+  overflow: auto; 
+  background: rgba(15, 23, 42, 0.5); 
+  padding: 12px; 
+  border-radius: 8px; 
+}
+
+/* === Form Controls in Header === */
+.controls label { 
+  color: #94a3b8;
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.controls select, 
+.controls input { 
+  color: #e2e8f0; 
+}
+
+.files strong { 
+  color: #e2e8f0; 
+}
+
+.path-input { 
+  margin-left: 8px; 
+  width: 280px; 
+  padding: 10px 14px; 
+  border-radius: 10px; 
+  border: 1px solid rgba(255, 255, 255, 0.1); 
+  background: rgba(15, 23, 42, 0.8); 
+  color: #e2e8f0;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.path-input:focus {
+  outline: none;
+  border-color: #4ade80;
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.15);
+}
+
+.controls select, 
+.controls input[type="date"], 
+.controls input[type="month"], 
+.controls input[type="number"], 
+.controls input[type="datetime-local"] { 
+  background: rgba(15, 23, 42, 0.8); 
+  color: #e2e8f0; 
+  border: 1px solid rgba(255, 255, 255, 0.1); 
+  padding: 10px 14px; 
+  border-radius: 10px;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.controls select:focus,
+.controls input:focus {
+  outline: none;
+  border-color: #4ade80;
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.15);
+}
+
+/* === Grid Layout === */
+.grid { 
+  display: grid; 
+  grid-template-columns: 1fr; 
+  gap: 20px; 
+  max-width: 1400px; 
+  margin: 16px auto; 
+  align-items: start; 
+}
+
+.left { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 20px; 
+}
+
+.right { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 20px; 
+}
+
+/* === Chart Containers with Glassmorphism === */
+.chart-canvas { 
+  width: 100%; 
+  height: 450px; 
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px; 
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+.chart.small .chart-canvas { 
+  height: 240px; 
+}
+
+.chart.large {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* === Data Table === */
+.data-table { 
+  background: rgba(30, 41, 59, 0.5);
+  backdrop-filter: blur(8px);
+  padding: 16px; 
+  border-radius: 12px; 
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+table { 
+  width: 100%; 
+  border-collapse: collapse; 
+}
+
+th, td { 
+  border: 1px solid rgba(255, 255, 255, 0.08); 
+  padding: 10px 12px; 
+  text-align: left; 
+  color: #e2e8f0;
+  font-size: 0.85rem;
+}
+
+th { 
+  background: rgba(30, 41, 59, 0.8); 
+  color: #94a3b8;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* === Time Controls === */
+.time-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* === Sample Table Container === */
+#sampleTableContainer {
+  max-width: 1400px !important;
+  margin: 20px auto !important;
+  padding: 0 !important;
+}
+
+#sampleTableContainer > div {
+  background: rgba(30, 41, 59, 0.5) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 20px !important;
+  border-radius: 16px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+}
+
+#sampleTableContainer h3 {
+  color: #e2e8f0 !important;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* === Checkboxes === */
+input[type="checkbox"] {
+  accent-color: #4ade80;
+  width: 16px;
+  height: 16px;
+}
+
+/* === Responsive === */
 @media (max-width: 900px) {
-  .grid { grid-template-columns: 1fr; padding: 0 12px; }
-  .controls { max-width: calc(100% - 24px); }
+  .grid { 
+    grid-template-columns: 1fr; 
+    padding: 0 12px; 
+  }
+  
+  .controls { 
+    max-width: calc(100% - 24px);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .controls-left,
+  .controls-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .path-input {
+    width: 100%;
+    max-width: 280px;
+  }
+  
+  .demo-header {
+    margin: 0 12px 16px 12px;
+    max-width: calc(100% - 24px);
+  }
 }
 </style>

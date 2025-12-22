@@ -1,135 +1,188 @@
+"""
+China-VIS2021 数据处理主入口
+支持命令行参数: --step extract|aggregate|export|calendar|windrose|all --year YYYY
+"""
+
 import os
 import glob
+import argparse
 import pandas as pd
 from src.config import BASE_PATH, AGGREGATED_DIR, OUTPUT_DIR, PROCESSED_DIR
 from src.preprocess import process_zips_parallel
 from src.aggregate import aggregate_month_from_saved_days
 from src.visualize import convert_to_echarts_format
 
-import run_pipeline as run_pipeline
-
-# ===== 用户可修改的运行参数 =====
-# 年份
+# ===== 默认参数 =====
 DEFAULT_YEAR = 2013
-# 并发 worker 数（建议根据磁盘 I/O 与 CPU 调整，Windows 上 HDF5 打开仍有全局序列化）
 DEFAULT_WORKERS = 4
-# 是否在运行时输出 debug 日志（0/1）
 DEFAULT_PREPROCESS_DEBUG = 0
-# 是否跳过 IQR 离群值移除（1 跳过以加速，0 保留完整清洗）
 DEFAULT_PREPROCESS_SKIP_IQR = 1
-# granularity: 'city' or 'grid' (默认自动检测 admin_geojson 存在时使用 city)
-# ======================================================================
 
 
-
-def main_processing_pipeline(year=2013, workers=4):
-    # ensure environment flags are set from defaults if not provided externally
+def _ensure_env_defaults():
+    """设置环境变量默认值"""
     if os.environ.get('PREPROCESS_DEBUG', '') == '':
         os.environ['PREPROCESS_DEBUG'] = str(int(DEFAULT_PREPROCESS_DEBUG))
     if os.environ.get('PREPROCESS_SKIP_IQR', '') == '':
         os.environ['PREPROCESS_SKIP_IQR'] = str(int(DEFAULT_PREPROCESS_SKIP_IQR))
+
+
+def _find_admin_geojson():
+    """查找行政区划 GeoJSON 文件"""
+    candidates = [
+        os.path.join(os.path.dirname(__file__), '..', 'resources', 'GADM', 'gadm41_CHN_2.json'),
+        os.path.join(os.path.dirname(__file__), 'Data', 'GADM', 'gadm41_CHN_2.json'),
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            print(f"✅ 成功定位行政区划文件: {os.path.abspath(path)}")
+            return path
+    return None
+
+
+def step_extract(year, workers):
+    """Step 1: 提取与清洗"""
+    print(f"\n[extract] 开始并行按日处理 ZIP 文件，年份: {year}...")
     base_path = os.path.join(BASE_PATH, str(year))
-    print("开始并行按日处理 ZIP 文件并保存中间（已清洗）结果，按市级粒度...")
+    admin_geojson = _find_admin_geojson()
+    granularity = 'city' if admin_geojson else 'grid'
+    
+    process_zips_parallel(
+        base_path, year=year, granularity=granularity,
+        admin_geojson=admin_geojson, workers=workers, aggregate_mean=True
+    )
+    print(f"提取完成。结果保存在: {os.path.join(PROCESSED_DIR, 'city', str(year))}")
 
-    admin_geojson = os.path.join(os.path.dirname(__file__), 'Data', 'GADM', 'gadm41_CHN_2.json')
-    if not os.path.exists(admin_geojson):
-        admin_geojson = None
 
-    # 逐日进行处理以降低内存压力
-    process_zips_parallel(base_path, year=year, granularity='city' if admin_geojson else 'grid', admin_geojson=admin_geojson, workers=workers, aggregate_mean=True)
-    # 保存的日文件根目录（preprocess 将按 PROCESSED_DIR/<granularity>/<year>/<month>/<day> 保存）
-    processed_root = os.path.join(PROCESSED_DIR, 'city' if admin_geojson else 'grid')
-
-    print("开始逐月聚合已保存的日数据（逐月处理以降低内存压力）...")
-    monthly_frames = []
-    # root for saved daily files for this run/year
-    processed_days_dir = os.path.join(processed_root, str(year))
+def step_aggregate(year):
+    """Step 2: 月度聚合"""
+    print(f"\n[aggregate] 开始逐月聚合已保存的日数据，年份: {year}...")
+    processed_root = os.path.join(PROCESSED_DIR, 'city')
+    output_dir = os.path.join(AGGREGATED_DIR, str(year))
+    os.makedirs(output_dir, exist_ok=True)
+    
     for month in range(1, 13):
         month_dir = os.path.join(processed_root, str(year), f"{month:02d}")
         try:
-            month_df = aggregate_month_from_saved_days(year, month, month_dir, output_dir=os.path.join(AGGREGATED_DIR, 'processed_months'))
-            monthly_frames.append(month_df)
-        except FileNotFoundError:
-            print(f"未找到 {year}-{month:02d} 的日文件，跳过月度聚合")
-            continue
+            if not os.path.exists(month_dir) or not os.listdir(month_dir):
+                print(f"  跳过 {year}-{month:02d} (无数据)")
+                continue
+            aggregate_month_from_saved_days(year, month, month_dir, output_dir=output_dir)
+            print(f"  ✓ 聚合完成: {year}-{month:02d}")
         except Exception as e:
-            print(f"聚合 {year}-{month:02d} 时出错: {e}")
-            continue
+            print(f"  ✗ 聚合失败 {year}-{month:02d}: {e}")
+    
+    print(f"聚合完成。结果保存在: {output_dir}")
 
+
+def step_export(year):
+    """Step 3: ECharts 可视化导出"""
+    print(f"\n[export] 开始生成 ECharts 可视化数据，年份: {year}...")
+    
+    monthly_dir = os.path.join(AGGREGATED_DIR, str(year))
+    monthly_frames = []
+    
+    if os.path.exists(monthly_dir):
+        for month in range(1, 13):
+            csv_path = os.path.join(monthly_dir, f"{year}{month:02d}.csv")
+            if os.path.exists(csv_path):
+                try:
+                    df = pd.read_csv(csv_path)
+                    monthly_frames.append(df)
+                    print(f"  - 已加载: {os.path.basename(csv_path)}")
+                except Exception as e:
+                    print(f"  - 加载失败: {csv_path}: {e}")
+    
+    if not monthly_frames:
+        print("警告: 未找到月度聚合文件，尝试直接读取日文件...")
+        processed_root = os.path.join(PROCESSED_DIR, 'city')
+        all_files = glob.glob(os.path.join(processed_root, str(year), '**', '*.csv'), recursive=True)
+        
+        if not all_files:
+            raise RuntimeError(f"未找到年份 {year} 的任何数据文件")
+        
+        for f in all_files[:365]:  # 限制数量
+            try:
+                monthly_frames.append(pd.read_csv(f))
+            except:
+                pass
+    
     if monthly_frames:
+        print(f"读取到 {len(monthly_frames)} 个文件，正在合并...")
         combined = pd.concat(monthly_frames, ignore_index=True)
         if 'time' in combined.columns:
             combined['time'] = pd.to_datetime(combined['time'])
-        province_data = combined.groupby('time').mean().reset_index()
+        
+        output_path = convert_to_echarts_format(combined, output_dir=os.path.join(OUTPUT_DIR, 'echarts'))
+        print(f"ECharts 数据已保存到: {output_path}")
     else:
-        # try to use processed days directly (递归查找该年下所有月日文件)
-        all_day_files = sorted(glob.glob(os.path.join(processed_root, str(year), '**', '*.parquet'), recursive=True) +
-                               glob.glob(os.path.join(processed_root, str(year), '**', '*.csv'), recursive=True))
-        parts = []
-        for f in all_day_files:
-            try:
-                if f.endswith('.parquet'):
-                    parts.append(pd.read_parquet(f))
-                else:
-                    parts.append(pd.read_csv(f, parse_dates=['time']))
-            except Exception as e:
-                print(f"读取日文件 {f} 时出错: {e}")
-        if parts:
-            combined = pd.concat(parts, ignore_index=True)
-            combined['time'] = pd.to_datetime(combined['time'])
-            province_data = combined.groupby('time').mean().reset_index()
-        else:
-            raise RuntimeError("未找到可用于生成可视化的数据")
+        raise RuntimeError("没有有效数据可用于生成可视化。")
 
-    print("转换为ECharts格式并保存...")
-    output_dir = convert_to_echarts_format(province_data, output_dir=os.path.join(OUTPUT_DIR, 'echarts'))
 
-    print("数据处理完成！ 中间日文件目录：", processed_days_dir)
-    print("月度聚合文件目录：", os.path.join(AGGREGATED_DIR, 'processed_months'))
-    return output_dir
+def step_calendar(year):
+    """Step 4: 日历热力图数据生成"""
+    print(f"\n[calendar] 开始生成污染日历数据，年份: {year}...")
+    
+    # 动态导入日历生成模块
+    from src.util.generate_calendar_series import build_calendar_series
+    
+    processed_dir = os.path.join(os.path.dirname(__file__), '..', 'resources', 'processed')
+    output_dir = os.path.join(os.path.dirname(__file__), '..', 'resources', 'output', 'calendar', str(year))
+    
+    build_calendar_series(year=year, processed_dir=processed_dir, output_dir=output_dir)
+    print(f"日历数据生成完成！输出目录: {output_dir}")
+
+
+def step_windrose(year):
+    """Step 5: 风向玫瑰图数据生成"""
+    print(f"\n[windrose] 开始生成风玫瑰图数据，年份: {year}...")
+    
+    # 动态导入风玫瑰图生成模块
+    from src.util.generate_wind_rose import build_wind_rose_data
+    
+    processed_dir = os.path.join(os.path.dirname(__file__), '..', 'resources', 'processed')
+    output_dir = os.path.join(os.path.dirname(__file__), '..', 'resources', 'output', 'wind_rose', str(year))
+    
+    build_wind_rose_data(year=year, processed_dir=processed_dir, output_dir=output_dir)
+    print(f"风玫瑰图数据生成完成！输出目录: {output_dir}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description='China-VIS2021 数据处理管道')
+    parser.add_argument('--step', type=str, default='all',
+                        choices=['extract', 'aggregate', 'export', 'calendar', 'windrose', 'all'],
+                        help='执行步骤: extract/aggregate/export/calendar/windrose/all')
+    parser.add_argument('--year', type=int, default=DEFAULT_YEAR,
+                        help=f'处理年份 (默认: {DEFAULT_YEAR})')
+    parser.add_argument('--workers', type=int, default=DEFAULT_WORKERS,
+                        help=f'并行 worker 数 (默认: {DEFAULT_WORKERS})')
+    
+    args = parser.parse_args()
+    
+    _ensure_env_defaults()
+    
+    print(f"=" * 50)
+    print(f"China-VIS2021 数据处理管道")
+    print(f"年份: {args.year}, 步骤: {args.step}")
+    print(f"=" * 50)
+    
+    if args.step in ('extract', 'all'):
+        step_extract(args.year, args.workers)
+    
+    if args.step in ('aggregate', 'all'):
+        step_aggregate(args.year)
+    
+    if args.step in ('export', 'all'):
+        step_export(args.year)
+    
+    if args.step == 'calendar':
+        step_calendar(args.year)
+    
+    if args.step == 'windrose':
+        step_windrose(args.year)
+    
+    print("\n✅ 处理完成！")
 
 
 if __name__ == '__main__':
-    os.environ['PREPROCESS_DEBUG'] = str(int(DEFAULT_PREPROCESS_DEBUG))
-    os.environ['PREPROCESS_SKIP_IQR'] = str(int(DEFAULT_PREPROCESS_SKIP_IQR))
-    main_processing_pipeline(year=DEFAULT_YEAR, workers=DEFAULT_WORKERS)
-
-# def _ensure_env_defaults():
-#     # 如果未设置，则保留现有环境变量默认值
-#     if os.environ.get('PREPROCESS_DEBUG', '') == '':
-#         os.environ['PREPROCESS_DEBUG'] = str(int(DEFAULT_PREPROCESS_DEBUG))
-#     if os.environ.get('PREPROCESS_SKIP_IQR', '') == '':
-#         os.environ['PREPROCESS_SKIP_IQR'] = str(int(DEFAULT_PREPROCESS_SKIP_IQR))
-
-
-# def main():
-#     parser = argparse.ArgumentParser(description='Top-level runner that delegates to run_pipeline sub-steps')
-#     parser.add_argument('--step', choices=['extract', 'aggregate', 'export', 'all'], default='all')
-#     parser.add_argument('--year', type=int, default=getattr(run_pipeline, 'DEFAULT_YEAR', 2013))
-#     parser.add_argument('--workers', type=int, default=getattr(run_pipeline, 'DEFAULT_WORKERS', 4))
-#     parser.add_argument('--granularity', choices=['grid', 'city', 'province'], default='city')
-#     parser.add_argument('--admin-geojson', default=None)
-#     parser.add_argument('--processed-root', default=None)
-#     parser.add_argument('--aggregated-dir', default=None)
-#     parser.add_argument('--output-dir', default=None)
-#     args = parser.parse_args()
-
-#     _ensure_env_defaults()
-
-#     if args.step in ('extract', 'all'):
-#         ns = SimpleNamespace(base_path=None, year=args.year, granularity=args.granularity,
-#                              admin_geojson=args.admin_geojson, workers=args.workers, aggregate_mean=True, max_inflight=None)
-#         run_pipeline.cmd_extract(ns)
-
-#     if args.step in ('aggregate', 'all'):
-#         ns = SimpleNamespace(year=args.year, processed_root=args.processed_root, output_dir=args.aggregated_dir)
-#         run_pipeline.cmd_aggregate(ns)
-
-#     if args.step in ('export', 'all'):
-#         # 通过年份，这样 run_pipeline 可以在 AGGREGATED_DIR/<year> 下查找作为后备
-#         ns = SimpleNamespace(aggregated_dir=args.aggregated_dir, output_dir=args.output_dir, year=args.year)
-#         run_pipeline.cmd_export(ns)
-
-
-# if __name__ == '__main__':
-#     main()
+    main()
