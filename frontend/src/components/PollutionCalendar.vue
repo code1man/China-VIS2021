@@ -38,7 +38,6 @@
 
 <script setup>
 import { ref, onMounted, watch, nextTick } from 'vue';
-import * as echarts from 'echarts';
 
 // 响应式数据
 const selectedCity = ref('');

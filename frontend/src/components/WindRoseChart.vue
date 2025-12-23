@@ -1,6 +1,5 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
-import * as echarts from 'echarts';
 
 // ==================== 常量定义 ====================
 
